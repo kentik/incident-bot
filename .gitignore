@@ -11,6 +11,7 @@ docker-compose.dev.yml
 slack_app_manifest.yaml
 test.py
 logs/
+.env
 
 .DS_Store
 deploy/kustomize/incident-bot/base/db.yaml

@@ -1,7 +1,6 @@
 import config
 import json
 import logging
-import logging.config
 import re
 
 from bot.shared import tools
