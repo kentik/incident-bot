@@ -20,6 +20,8 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 logger = logging.getLogger("models.postgres")
 
+logger.debug("database_url: %s", config.database_url)
+
 engine = create_engine(
     config.database_url,
     isolation_level="REPEATABLE READ",

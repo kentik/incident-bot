@@ -28,7 +28,7 @@ Featuring a rich web management UI:
 ## Features at a Glance
 
 - Helps you declare and run incidents - All the automation you'll need to organize, strategize, and explain
-  - Create a a war room Slack channel - Create a Slack channel automatically and prepopulate with key information and manage all of your incidents in a centralized digest channel
+  - Create a war room Slack channel - Create a Slack channel automatically and prepopulate with key information and manage all of your incidents in a centralized digest channel
   - Control from start to finish - Shift the incident through status and severity from a management menu - never leave the channel
 - Helps you find the right people to assist - Page teams, automatically add groups or users, and start putting out fires
   - Manage user participation - Invite key users to an incident channel automatically - users can be elected to roles or can claim them
