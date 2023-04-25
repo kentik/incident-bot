@@ -22,8 +22,6 @@ services:
       - JWT_SECRET_KEY
       - FLASK_DEBUG_MODE_ENABLED
       - GITHUB_API_KEY
-      - GITHUB_REPO
-      - GITHUB_ISSUE_TEMPLATE_PATH
     ports:
       - target: 3000
         published: 3000

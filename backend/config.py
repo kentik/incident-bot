@@ -253,6 +253,29 @@ class Configuration:
                             },
                         },
                     },
+                    "github": {
+                        "required": False,
+                        "type": "dict",
+                        "schema": {
+                            "api_url": {
+                                "required": False,
+                                "type": "string",
+                                "empty": True,
+                                "regex": self.url_regex,
+                            },
+                            "repository": {
+                                "required": True,
+                                "type": "string",
+                                "empty": False,
+                            },
+                            "issue_template": {
+                                "required": True,
+                                "type": "string",
+                                "empty": False,
+                            },
+                        },
+                    },
+
                 },
             },
             "links": {
@@ -369,11 +392,16 @@ pagerduty_api_username = os.getenv("PAGERDUTY_API_USERNAME", default="")
 pagerduty_api_token = os.getenv("PAGERDUTY_API_TOKEN", default="")
 
 """
-External
+Zoom
 """
 zoom_account_id = os.getenv("ZOOM_ACCOUNT_ID", default="")
 zoom_client_id = os.getenv("ZOOM_CLIENT_ID", default="")
 zoom_client_secret = os.getenv("ZOOM_CLIENT_SECRET", default="")
+
+"""
+Github
+"""
+github_api_key = os.getenv("GITHUB_API_KEY")
 
 """
 Web Application
