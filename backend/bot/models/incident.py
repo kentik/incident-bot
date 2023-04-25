@@ -434,12 +434,34 @@ def db_update_jira_issues_col(
             incident.jira_issues.append(issue_link)
         Session.commit()
     except Exception as error:
-        logger.error(f"Incident update failed for {incident_id}: {error}")
+        logger.error(f"Incident jira_issues update failed for {incident_id}: {error}")
         Session.rollback()
     finally:
         Session.close()
         Session.remove()
 
+
+def db_update_github_issue_col(
+    issue_link: str,
+    incident_id: str = "",
+):
+    """
+    Update an incident's github_issue column
+    """
+    try:
+        incident = (
+            Session.query(Incident)
+            .filter(Incident.incident_id == incident_id)
+            .one()
+        )
+        incident.github_issue = issue_link
+        Session.commit()
+    except Exception as error:
+        logger.error(f"Incident github_issue update failed for {incident_id}: {error}")
+        Session.rollback()
+    finally:
+        Session.close()
+        Session.remove()
 
 """
 Write

@@ -65,6 +65,10 @@ integrations:
   zoom:
     # Set to true to automatically generate a Zoom meeting for each incident
     auto_create_meeting: false
+  github:
+    repository: 'mmac-m3a/kentik-incident-test'
+    issue_template: '.github/ISSUE_TEMPLATE/production-incident-tracking-template.md'
+
 links:
   incident_guide: https://changeme.com
   incident_postmortems: https://changeme.com

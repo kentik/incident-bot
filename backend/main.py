@@ -78,7 +78,7 @@ def startup_tasks():
     # Integration Tests
     # --------------------
     if "atlassian" in config.active.integrations:
-        if "confluence" in config.active.integrations.get("atlassian"):
+        if "confluence" in config.active.integrations.get("atlassian", []):
             from bot.confluence.api import ConfluenceApi
 
             api_test = ConfluenceApi()
@@ -96,7 +96,7 @@ def startup_tasks():
                 )
                 sys.exit(1)
 
-        if "jira" in config.active.integrations.get("atlassian"):
+        if "jira" in config.active.integrations.get("atlassian", []):
             from bot.jira.api import JiraApi
 
             api_test = JiraApi()

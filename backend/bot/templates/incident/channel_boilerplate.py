@@ -165,7 +165,7 @@ class IncidentChannelBoilerplateMessage:
         ]
         if (
             "atlassian" in config.active.integrations
-            and "jira" in config.active.integrations.get("atlassian")
+            and "jira" in config.active.integrations.get("atlassian", [])
         ):
             button_el.append(
                 {
@@ -176,6 +176,19 @@ class IncidentChannelBoilerplateMessage:
                         "emoji": True,
                     },
                     "action_id": "open_incident_create_jira_issue_modal",
+                    "style": "primary",
+                },
+            )
+        if "github" in config.active.integrations:
+            button_el.append(
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Create Github Issue",
+                        "emoji": True,
+                    },
+                    "action_id": "open_incident_create_github_issue_modal",
                     "style": "primary",
                 },
             )
