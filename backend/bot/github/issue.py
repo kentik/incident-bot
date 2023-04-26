@@ -10,6 +10,7 @@ from bot.models.incident import db_read_incident
 
 TemplateDataType = TypeVar("TemplateDataType", bound="TemplateData")
 
+
 @dataclass
 class TemplateData:
     title_template: str
@@ -38,41 +39,43 @@ class GithubIssue:
         regions: List[str],
         owner: str,
         detection_source: str = "manual",
-        ingest_impact: bool = False,
-        notifications: bool = False,
+        ingest_impacted: bool = False,
+        notifications_impacted: bool = False,
 
     ):
-        self.repo = GithubApi().repo
+        self.api = GithubApi()
         self.incident_id = incident_id
         self.incident_data = db_read_incident(channel_id=self.incident_id)
-        self.template = TemplateData.from_repo(self.repo, config.active.get("github").get("issue_template"))
+        self.template = TemplateData.from_repo_path(self.api.repo, self.api.config.template_path)
         self.description = description
         self.start_time = start_time
         self.detection_time = detection_time
         self.regions = regions
         self.owner = owner
         self.detection_source = detection_source
-        self.ingest_impact = ingest_impact
-        self.notifications = notifications
+        self.ingest_impacted = ingest_impacted
+        self.notifications_impacted = notifications_impacted
         self.issue = None
+        logger.debug("%s: constructed: %s", self.__class__.__name__, str(self))
 
     def new(self):
-        """Create Github issue"""
+        """Create GitHub issue"""
         title = self.template.title_template.format(
             date=self.start_time.date().isoformat(),
             incident_title=self.description)
         body = self.template.body_template.format(
             incident_start=self.start_time.isoformat(sep=" ", timespec="minutes"),
             incident_detection=self.detection_time.isoformat(sep=" ", timespec="minutes"),
-            regions=self.regions,
-            ingest_impact=self.ingest_impact,
-            notifications=self.notifications,
+            regions=" ".join(self.regions),
+            ingest_impacted=self.ingest_impacted,
+            notifications_impacted=self.notifications_impacted,
             owner=self.owner,
             slack_channel=self.incident_data.channel_name,
             detection_source=self.detection_source
         )
         try:
-            self.issue = self.repo.create_issue(title, body=body, labels=self.template.labels)
+            self.issue = self.api.repo.create_issue(title, body=body, labels=self.template.labels)
+            logger.debug("%s.new: issue: %s", self.__class__.__name__, self.issue)
             return self.issue
         except Exception as error:
             logger.error("Error creating Github issue for incident '%s': '%s'", self.incident_data.incident_id, error)

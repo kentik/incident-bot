@@ -1786,7 +1786,7 @@ def handle_submission(ack, body, client, view):
 @app.action("open_incident_create_github_issue_modal")
 def open_modal(ack, body, client):
     """
-    Provides modal collecting data for a Github issue creation
+    Provides modal collecting data for a GitHub issue creation
     """
     now = datetime.now(tz=timezone.utc)
     incident_id = body.get("channel").get("id")
@@ -1848,11 +1848,11 @@ def open_modal(ack, body, client):
                 "min_length": 16,
                 "max_length": 16,
                 "initial_value": now.isoformat(sep=" ", timespec="minutes").split("+")[0],
-                "label": {
-                    "type": "plain_text",
-                    "text": "Incident start time in UTC (YYYY-MM-DD HH:MM)",
-                    "emoji": False,
-                },
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Incident start time in UTC (YYYY-MM-DD HH:MM)",
+                "emoji": False,
             },
         },
         {
@@ -1864,11 +1864,11 @@ def open_modal(ack, body, client):
                 "min_length": 16,
                 "max_length": 16,
                 "initial_value": now.isoformat(sep=" ", timespec="minutes").split("+")[0],
-                "label": {
-                    "type": "plain_text",
-                    "text": "Incident detection time in UTC (YYYY-MM-DD HH:MM)",
-                    "emoji": False,
-                },
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Incident detection time in UTC (YYYY-MM-DD HH:MM)",
+                "emoji": False,
             },
         },
         {"type": "divider"},
@@ -1880,7 +1880,7 @@ def open_modal(ack, body, client):
                 "text": "*Were alarm notifications impacted?*",
             },
             "accessory": {
-                "action_id": "open_incident_modal_notifications_impacted",
+                "action_id": "github.notifications_impacted_input",
                 "type": "static_select",
                 "placeholder": {
                     "type": "plain_text",
@@ -1919,7 +1919,7 @@ def open_modal(ack, body, client):
                 "text": "*Was ingest impacted?*",
             },
             "accessory": {
-                "action_id": "open_incident_modal_ingest_impacted",
+                "action_id": "github.ingest_impacted_input",
                 "type": "static_select",
                 "placeholder": {
                     "type": "plain_text",
@@ -1956,7 +1956,7 @@ def open_modal(ack, body, client):
             "block_id": "github_issue_regions",
             "element": {
                 "type": "plain_text_input",
-                "action_id": "github.regions",
+                "action_id": "github.regions_input",
                 "min_length": 3,
             },
             "label": {
@@ -1999,6 +1999,24 @@ def open_modal(ack, body, client):
     )
 
 
+@app.action("github.ingest_impacted_input")
+def handle_some_action(ack, body):
+    ack()
+    logger.debug("github.ingest_impacted_input: body: '%s'", body)
+
+
+@app.action("github.notifications_impacted_input")
+def handle_some_action(ack, body):
+    ack()
+    logger.debug("github.notifications_impacted_input: body: '%s'", body)
+
+
+@app.action("github.view_issue")
+def handle_some_action(ack, body):
+    ack()
+    logger.debug("github.view_issue: body: '%s'", body)
+
+
 @app.view("open_incident_create_github_issue_modal")
 def handle_submission(ack, body, client, view):
     """
@@ -2007,10 +2025,22 @@ def handle_submission(ack, body, client, view):
     ack()
     incident_id = body.get("view").get("blocks")[0].get("block_id")
     parsed = parse_modal_values(body)
+
+    def to_bool(s: str) -> bool:
+        m = dict(false=False, true=True)
+        return s is not None and m.get(s.lower(), bool(s))
+
     try:
         issue = GithubIssue(
             incident_id=incident_id,
             description=parsed.get("github.description_input"),
+            start_time=datetime.fromisoformat(parsed.get("github.start_time_input")),
+            detection_time=datetime.fromisoformat(parsed.get("github.detection_time_input")),
+            regions=parsed.get("github.regions_input").split(),
+            owner=parsed.get("github.owner_input"),
+            detection_source=parsed.get("github.detection_source_input"),
+            ingest_impacted=to_bool(parsed.get("github.ingest_impacted_input")),
+            notifications_impacted=to_bool(parsed.get("github.notifications_impacted_input"))
         ).new()
         db_update_github_issue_col(
             incident_id=incident_id,
@@ -2024,24 +2054,15 @@ def handle_submission(ack, body, client, view):
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "Github issue has been created for this incident.",
+                            "text": f"GitHub issue has been created for this incident in {issue.repository.full_name}.",
                         },
                     },
-                    {"type": "divider"},
                     {
                         "type": "section",
-                        "fields": [
-                            {
-                                "type": "mrkdwn",
-                                "text": "*Number:* {}".format(issue.number),
-                            },
-                            {
-                                "type": "mrkdwn",
-                                "text": "*Description:* {}".format(
-                                    parsed.get("github.description_input")
-                                ),
-                            },
-                        ],
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*Title:* {issue.title}",
+                        },
                     },
                     {
                         "type": "actions",
@@ -2067,6 +2088,6 @@ def handle_submission(ack, body, client, view):
                 timestamp=resp.get("ts"),
             )
         except Exception as error:
-            logger.error("Error sending Github issue message for incident %s: '%s'", incident_id, error)
+            logger.error("Error sending GitHub issue message for incident %s: '%s'", incident_id, error)
     except Exception as error:
         logger.error(error)

@@ -2,11 +2,6 @@ import config
 import logging
 import sys
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(stream=sys.stdout, level=config.log_level)
-
-logger.debug("config: %s", config.database_url)
-
 from bot.api.flask import app
 from bot.models.pg import db_verify, OperationalData, Session
 from bot.scheduler import scheduler
@@ -17,6 +12,9 @@ from bot.slack.client import (
 from bot.slack.handler import app as slack_app
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from waitress import serve
+
+
+logger = logging.getLogger(__name__)
 
 """
 Check for required environment variables first

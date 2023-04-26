@@ -456,6 +456,7 @@ def db_update_github_issue_col(
         )
         incident.github_issue = issue_link
         Session.commit()
+        logger.debug("github_issue_update: incident_id: %s link: %s", incident_id, issue_link)
     except Exception as error:
         logger.error(f"Incident github_issue update failed for {incident_id}: {error}")
         Session.rollback()
