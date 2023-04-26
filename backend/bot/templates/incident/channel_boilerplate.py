@@ -185,7 +185,7 @@ class IncidentChannelBoilerplateMessage:
                     "type": "button",
                     "text": {
                         "type": "plain_text",
-                        "text": "Create Github Issue",
+                        "text": "Create GitHub Issue",
                         "emoji": True,
                     },
                     "action_id": "open_incident_create_github_issue_modal",

@@ -40,8 +40,6 @@ def custom_error_handler(error, body, logger):
     logger.debug(f"Request body: {body}")
 
 
-from . import modals
-
 tracking = DigestMessageTracking()
 
 """

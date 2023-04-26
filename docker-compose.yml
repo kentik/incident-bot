@@ -8,6 +8,7 @@ services:
     depends_on:
       - db
     environment:
+      - LOGLEVEL
       - CONFIG_FILE_PATH
       - SLACK_APP_TOKEN
       - SLACK_BOT_TOKEN

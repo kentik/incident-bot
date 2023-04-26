@@ -17,7 +17,10 @@ log_level = os.getenv("LOGLEVEL", "INFO").upper()
 
 # Create the logging object
 # This is used by submodules as well
+logging.basicConfig(stream=sys.stdout, level=log_level)
+
 logger = logging.getLogger("config")
+logger.info("log level: %s (%d)", log_level, logger.level)
 
 
 """
@@ -37,15 +40,15 @@ class Configuration:
             if not is_test_environment
             else "config-test.yaml"
         )
-        with open(self.filepath, "r") as yamlfile:
-            self.live = yaml.load(yamlfile, Loader=yaml.FullLoader)
-        self.url_regex = "^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+"
+        with open(self.filepath, "r") as f:
+            self.live = yaml.safe_load(f)
+        self.url_regex = r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+"
 
     def validate(self):
         """Given a config supplied as dict[str, any], validate its
         fields.
 
-        Returns bool indicating whether or not the service passes validation
+        Returns bool indicating whether the configuration passes validation
         """
         schema = {
             "platform": {
