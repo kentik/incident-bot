@@ -40,4 +40,14 @@ image:
   SAVE IMAGE --push gcr.io/kentik-continuous-delivery/ops/incident-bot-fork:master
 
 all:
-  BUILD +image
+  ARG version="${EARTHLY_TARGET_TAG}"
+
+  BUILD \
+    --platform=linux/arm64 \
+    --platform=linux/amd64 \
+    +base-image
+
+  BUILD \
+    --platform=linux/arm64 \
+    --platform=linux/amd64 \
+    +image
