@@ -1,11 +1,11 @@
 import json
-import logging
+import config
 
 from bot.models.pg import Incident, Session
 from sqlalchemy import or_
 from typing import List
 
-logger = logging.getLogger("models.incident")
+logger = config.log.get_logger("models.incident")
 
 """
 Read
@@ -440,29 +440,6 @@ def db_update_jira_issues_col(
         Session.close()
         Session.remove()
 
-
-def db_update_github_issue_col(
-    issue_link: str,
-    incident_id: str = "",
-):
-    """
-    Update an incident's github_issue column
-    """
-    try:
-        incident = (
-            Session.query(Incident)
-            .filter(Incident.incident_id == incident_id)
-            .one()
-        )
-        incident.github_issue = issue_link
-        Session.commit()
-        logger.debug("github_issue_update: incident_id: %s link: %s", incident_id, issue_link)
-    except Exception as error:
-        logger.error(f"Incident github_issue update failed for {incident_id}: {error}")
-        Session.rollback()
-    finally:
-        Session.close()
-        Session.remove()
 
 """
 Write

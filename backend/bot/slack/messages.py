@@ -1,5 +1,4 @@
 import config
-import logging
 
 from apscheduler.job import Job
 from bot.models.incident import db_read_incident
@@ -7,7 +6,7 @@ from bot.shared import tools
 from typing import Any, Dict, List
 from .client import bot_user_name, bot_user_id
 
-logger = logging.getLogger("slack.messages")
+logger = config.log.get_logger("slack.messages")
 
 
 def help_menu(include_header: bool = True) -> List:
@@ -64,12 +63,13 @@ def incident_list_message(incidents: List, all: bool = False) -> List[Dict[str, 
     incidents -- List[Tuple] containing incident information
     all -- Bool indicating whether or not all incidents should be returned regardless of status
     """
+    which = "" if all else "Open"
     base_block = [
         {
             "type": "header",
             "text": {
                 "type": "plain_text",
-                "text": ":open_file_folder: Open Incidents",
+                "text": f":open_file_folder: {which} Incidents",
             },
         },
         {"type": "divider"},
@@ -81,7 +81,7 @@ def incident_list_message(incidents: List, all: bool = False) -> List[Dict[str, 
             "type": "header",
             "text": {
                 "type": "plain_text",
-                "text": ":open_file_folder: No Open Incidents",
+                "text": f":open_file_folder: No {which} Incidents",
             },
         },
     ]

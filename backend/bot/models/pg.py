@@ -1,5 +1,4 @@
 import config
-import logging
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy import (
@@ -18,9 +17,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.mutable import MutableBase, MutableDict, MutableList
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-logger = logging.getLogger("models.postgres")
-
-logger.debug("database_url: %s", config.database_url)
+logger = config.log.get_logger("models.postgres")
 
 engine = create_engine(
     config.database_url,
@@ -95,7 +92,6 @@ class Incident(Base, MutableBase, Serializer):
     conference_bridge = Column(String())
     pagerduty_incidents = Column(MutableList.as_mutable(JSONB))
     jira_issues = Column(MutableList.as_mutable(JSONB))
-    github_issue = Column(String())
 
     def serialize(self):
         d = Serializer.serialize(self)

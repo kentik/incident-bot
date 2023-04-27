@@ -1,6 +1,5 @@
 import config
 import json
-import logging
 import re
 
 from bot.shared import tools
@@ -15,7 +14,7 @@ from flask_limiter.util import get_remote_address
 from flask_marshmallow import Marshmallow
 from flask import Flask
 
-logger = logging.getLogger("api")
+logger = config.log.get_logger("api")
 
 """
 Run Init Tasks

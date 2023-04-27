@@ -10,17 +10,48 @@ from typing import Dict, List
 
 __version__ = "v1.4.19"
 
+
+class LogConfig:
+    def __init__(self, level_config: str = "INFO"):
+        self.base_log_level = "INFO"
+        self.module_log_levels = dict()
+        for e in level_config.split(","):
+            parts = e.split(":")
+            if len(parts) == 1:
+                self.base_log_level = parts[0].upper()
+            else:
+                self.module_log_levels[parts[0]] = parts[1].upper()
+
+    @property
+    def log_level(self) -> str:
+        return self.base_log_level
+
+    def get_logger(self, module_name: str) -> logging.Logger:
+        _logger = logging.getLogger(module_name)
+        name_parts = module_name.split(".")
+        for n in range(len(name_parts), 0, -1):
+            key = ".".join(name_parts[0:n])
+            level = self.module_log_levels.get(key)
+            if level is not None:
+                break
+        else:
+            level = self.base_log_level
+        _logger.setLevel(level)
+        return _logger
+
+
 # .env parse
 dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path)
-log_level = os.getenv("LOGLEVEL", "INFO").upper()
 
 # Create the logging object
+log = LogConfig(os.getenv("LOGLEVEL", "INFO"))
 # This is used by submodules as well
-logging.basicConfig(stream=sys.stdout, level=log_level)
+logging.basicConfig(stream=sys.stdout, level=log.log_level)
 
-logger = logging.getLogger("config")
-logger.info("log level: %s (%d)", log_level, logger.level)
+logger = log.get_logger("config")
+logger.info("base log level: %s", log.log_level)
+logger.debug("module log levels: %s", ",".join([f"m:l" for m, l in log.module_log_levels.items()]))
 
 
 """
@@ -520,7 +551,7 @@ Core functionality:
     Database host:                      {database_host}
     Incidents digest channel:           {active.digest_channel}
     Slack workspace:                    {workspace}
-    Logging level:                      {log_level}
+    Base Log level:                     {log.log_level}
 --------------------------------------------------------------------------------
     """
     if wrap:

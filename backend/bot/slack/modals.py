@@ -1,5 +1,4 @@
 import config
-import logging
 import variables
 
 from datetime import datetime, timezone
@@ -15,7 +14,6 @@ from bot.models.incident import (
     db_read_incident,
     db_update_incident_last_update_sent_col,
     db_update_jira_issues_col,
-    db_update_github_issue_col,
 )
 from bot.models.pager import read_pager_auto_page_targets
 from bot.shared import tools
@@ -32,9 +30,8 @@ from bot.statuspage.handler import (
 )
 from bot.templates.incident.updates import IncidentUpdate
 from bot.templates.tools import parse_modal_values
-from datetime import datetime
 
-logger = logging.getLogger("slack.modals")
+logger = config.log.get_logger("slack.modals")
 
 placeholder_severity = [sev for sev, _ in config.active.severities.items()][-1]
 
@@ -271,6 +268,7 @@ def open_modal(ack, body, client):
             "block_id": "open_incident_modal_desc",
             "element": {
                 "type": "plain_text_input",
+                "max_length": incident.incident_description_max_length,
                 "action_id": "open_incident_modal_set_description",
                 "placeholder": {
                     "type": "plain_text",
@@ -1791,7 +1789,7 @@ def open_modal(ack, body, client):
     Provides modal collecting data for a GitHub issue creation
     """
     now = datetime.now(tz=timezone.utc)
-    incident_id = body.get("channel").get("id")
+    incident_id = body["channel"]["id"]
     blocks = [
         {
             "type": "header",
@@ -1805,7 +1803,7 @@ def open_modal(ack, body, client):
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "This issue will be created in the repo: *{}*".format(
+                "text": "This issue will be created in repo: *{}*".format(
                     config.active.integrations.get("github")
                     .get("repository")
                 ),
@@ -1818,14 +1816,18 @@ def open_modal(ack, body, client):
             "element": {
                 "type": "plain_text_input",
                 "action_id": "github.description_input",
-                "min_length": 1,
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Enter short description of the problem",
+                },
             },
             "label": {
                 "type": "plain_text",
-                "text": "Issue Description",
+                "text": "Description",
                 "emoji": False,
             },
         },
+        {"type": "divider"},
         {
             "type": "input",
             "block_id": "github_issue_owner_input",
@@ -1969,10 +1971,10 @@ def open_modal(ack, body, client):
         },
         {
             "type": "input",
-            "block_id": "github_issue_detection_source",
+            "block_id": "github_issue_detection_source_input",
             "element": {
                 "type": "plain_text_input",
-                "action_id": "github.detection_source",
+                "action_id": "github.detection_source_input",
                 "min_length": 3,
                 "initial_value": "manual",
             },
@@ -2025,7 +2027,7 @@ def handle_submission(ack, body, client, view):
     Handles submission of the open_incident_create_github_issue_modal dialog
     """
     ack()
-    incident_id = body.get("view").get("blocks")[0].get("block_id")
+    channel_id = body.get("view").get("blocks")[0].get("block_id")
     parsed = parse_modal_values(body)
 
     def to_bool(s: str) -> bool:
@@ -2034,7 +2036,7 @@ def handle_submission(ack, body, client, view):
 
     try:
         issue = GithubIssue(
-            incident_id=incident_id,
+            channel_id=channel_id,
             description=parsed.get("github.description_input"),
             start_time=datetime.fromisoformat(parsed.get("github.start_time_input")),
             detection_time=datetime.fromisoformat(parsed.get("github.detection_time_input")),
@@ -2044,13 +2046,9 @@ def handle_submission(ack, body, client, view):
             ingest_impacted=to_bool(parsed.get("github.ingest_impacted_input")),
             notifications_impacted=to_bool(parsed.get("github.notifications_impacted_input"))
         ).new()
-        db_update_github_issue_col(
-            incident_id=incident_id,
-            issue_link=issue.html_url,
-        )
         try:
             resp = client.chat_postMessage(
-                channel=incident_id,
+                channel=channel_id,
                 blocks=[
                     {
                         "type": "section",
@@ -2090,6 +2088,6 @@ def handle_submission(ack, body, client, view):
                 timestamp=resp.get("ts"),
             )
         except Exception as error:
-            logger.error("Error sending GitHub issue message for incident %s: '%s'", incident_id, error)
+            logger.error("Error sending GitHub issue message for incident %s: '%s'", channel_id, error)
     except Exception as error:
         logger.error(error)

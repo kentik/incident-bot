@@ -1,4 +1,4 @@
-import logging
+import config
 import sqlalchemy
 
 from bot.models.pg import Setting, Session
@@ -6,7 +6,7 @@ from bot.slack.client import slack_workspace_id
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
-logger = logging.getLogger("api.setting")
+logger = config.log.get_logger("api.setting")
 
 setting = Blueprint("setting", __name__)
 

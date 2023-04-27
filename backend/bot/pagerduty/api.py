@@ -1,6 +1,5 @@
 import config
 import json
-import logging
 
 from bot.models.pg import Incident, OperationalData, Session
 from bot.shared import tools
@@ -10,7 +9,7 @@ from pdpyras import APISession, PDClientError
 from sqlalchemy import update
 from typing import Dict
 
-logger = logging.getLogger("pagerduty.api")
+logger = config.log.get_logger("pagerduty.api")
 
 
 class PagerDutyAPI:

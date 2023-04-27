@@ -1,6 +1,5 @@
 import config
 import datetime
-import logging
 import slack_sdk
 import variables
 
@@ -16,7 +15,7 @@ from bot.slack.client import (
 from pytz import timezone
 from typing import List
 
-logger = logging.getLogger("scheduler")
+logger = config.log.get_logger("scheduler")
 
 application_timezone = config.active.options.get("timezone")
 jobstores = {"default": SQLAlchemyJobStore(url=config.database_url)}

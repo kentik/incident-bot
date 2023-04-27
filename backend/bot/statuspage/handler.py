@@ -1,6 +1,5 @@
 import config
 import json
-import logging
 import requests
 
 from bot.audit import log
@@ -13,7 +12,7 @@ from bot.models.incident import (
 from bot.slack.client import slack_web_client
 from typing import Any, Dict, List
 
-logger = logging.getLogger("statuspage.handler")
+logger = config.log.get_logger("statuspage.handler")
 
 api = "https://api.statuspage.io/v1/"
 api_key = config.statuspage_api_key

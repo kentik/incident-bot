@@ -1,5 +1,4 @@
 import config
-import logging
 import slack_sdk.errors
 import variables
 
@@ -25,6 +24,7 @@ from bot.slack.client import (
     get_message_content,
     invite_user_to_channel,
     slack_workspace_id,
+    get_channel_url,
 )
 from bot.slack.incident_logging import read as read_incident_pinned_items
 from bot.templates.incident.digest_notification import (
@@ -35,7 +35,7 @@ from bot.templates.incident.updates import IncidentUpdate
 from bot.templates.incident.user_dm import IncidentUserNotification
 from typing import Any, Dict
 
-logger = logging.getLogger("incident.actions")
+logger = config.log.get_logger("incident.actions")
 
 
 """
@@ -370,7 +370,7 @@ async def set_status(
             # Write audit log
             log.write(
                 incident_id=incident_data.incident_id,
-                event=f"RCA channel was created.",
+                event=f"Incident Analysis channel was created.",
                 content=rca_channel["channel"]["id"],
             )
         except slack_sdk.errors.SlackApiError as error:
@@ -401,7 +401,7 @@ async def set_status(
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": ":white_check_mark: Incident RCA Planning",
+                    "text": ":white_check_mark: Incident Analysis Planning",
                 },
             },
             {
@@ -409,8 +409,8 @@ async def set_status(
                 "text": {
                     "type": "mrkdwn",
                     "text": "You have been invited to this channel to assist "
-                    + f"with planning the RCA for <#{incident_data.channel_id}>. The Incident Commander "
-                    + "should invite anyone who can help contribute to the RCA"
+                    + f"with planning the Incident Analysis for <#{incident_data.channel_id}>. The Incident Commander "
+                    + "should invite anyone who can help contribute to the Incident Analysis"
                     + " and then use this channel to plan the meeting to go over the incident.",
                 },
             },
@@ -487,6 +487,45 @@ async def set_status(
                         {"type": "divider"},
                     ]
                 )
+        elif "github" in config.active.integrations and incident_data.rca:
+            rca_boilerplate_message_blocks.extend(
+                [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "*Incident analysis will be recorded in GitHub issue."
+                                    " You can open it using the button below.*",
+                        },
+                    },
+                    {
+                        "block_id": "buttons",
+                        "type": "actions",
+                        "elements": [
+                            {
+                                "type": "button",
+                                "text": {
+                                    "type": "plain_text",
+                                    "text": "View GitHub issue",
+                                },
+                                "style": "primary",
+                                "url": incident_data.rca,
+                                "action_id": "open_rca",
+                            },
+                            {
+                                "type": "button",
+                                "text": {
+                                    "type": "plain_text",
+                                    "text": "View Incident Channel",
+                                },
+                                "url": get_channel_url(incident_data.channel_id),
+                                "action_id": "incident.join_incident_channel",
+                            },
+                        ],
+                    },
+                    {"type": "divider"},
+                ]
+            )
         else:
             rca_boilerplate_message_blocks.extend(
                 [
@@ -500,7 +539,7 @@ async def set_status(
                                     "type": "plain_text",
                                     "text": "View Incident Channel",
                                 },
-                                "url": f"https://{slack_workspace_id}.slack.com/archives/{incident_data.channel_id}",
+                                "url": get_channel_url(incident_data.channel_id),
                                 "action_id": "incident.join_incident_channel",
                             },
                         ],
@@ -518,7 +557,7 @@ async def set_status(
             logger.debug(f"\n{result}\n")
 
         except slack_sdk.errors.SlackApiError as error:
-            logger.error(f"Error sending RCA update to RCA channel: {error}")
+            logger.error(f"Error sending update to RCA channel: {error}")
 
         # Send message to incident channel
         try:

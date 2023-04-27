@@ -1,9 +1,10 @@
 import asyncio
 import config
 import datetime
-import logging
 import re
 import slack_sdk.errors
+
+from dataclasses import dataclass
 
 from bot.audit import log
 from bot.exc import ConfigurationError
@@ -18,6 +19,7 @@ from bot.slack.client import (
     all_workspace_groups,
     slack_web_client,
     slack_workspace_id,
+    get_channel_url,
 )
 from bot.statuspage.slack import return_new_statuspage_incident_message
 from bot.templates.incident.channel_boilerplate import (
@@ -30,7 +32,7 @@ from bot.zoom.meeting import ZoomMeeting
 from cerberus import Validator
 from typing import Any, Dict, List
 
-logger = logging.getLogger("incident.handler")
+logger = config.log.get_logger("incident.handler")
 
 # How many total characters are allowed in a Slack channel name?
 # Slack has a max char limit of 80, but when creating the RCA channel, we need 4 extra chars for '-rca'
@@ -45,48 +47,22 @@ if not config.is_test_environment:
     from bot.slack.client import invite_user_to_channel
 
 
+@dataclass
 class RequestParameters:
-    def __init__(
-        self,
-        channel: str,
-        incident_description: str,
-        severity: str,
-        user: str = "",
-        created_from_web: bool = False,
-        is_security_incident: bool = False,
-        private_channel: bool = False,
-        message_reacted_to_content: str = "",
-        original_message_timestamp: str = "",
-    ):
-        self.channel = channel
-        self.incident_description = incident_description
-        self.user = user
-        self.severity = severity
-        self.created_from_web = created_from_web
-        self.is_security_incident = is_security_incident
-        self.private_channel = private_channel
-        self.message_reacted_to_content = message_reacted_to_content
-        self.original_message_timestamp = original_message_timestamp
-
-        self.as_dict = {
-            "channel": channel,
-            "incident_description": incident_description,
-            "user": user,
-            "severity": severity,
-            "created_from_web": created_from_web,
-            "is_security_incident": is_security_incident,
-            "private_channel": private_channel,
-            "message_reacted_to_content": message_reacted_to_content,
-            "original_message_timestamp": original_message_timestamp,
-        }
-
-        self.validate()
+    channel: str
+    incident_description: str
+    severity: str
+    user: str = ""
+    created_from_web: bool = False
+    is_security_incident: bool = False
+    private_channel: bool = False
+    message_reacted_to_content: str = ""
+    original_message_timestamp: str = ""
 
     def validate(self):
-        """Given a request supplied as dict[str, any], validate its
-        fields.
+        """Validate request data
 
-        Returns bool indicating whether or not the service passes validation
+        Returns bool indicating whether request is valid
         """
         schema = {
             "channel": {
@@ -476,7 +452,7 @@ async def handle_incident_optional_features(
         original_channel = request_parameters.channel
         original_message_timestamp = request_parameters.original_message_timestamp
         formatted_timestamp = str.replace(original_message_timestamp, ".", "")
-        link_to_message = f"https://{slack_workspace_id}.slack.com/archives/{original_channel}/p{formatted_timestamp}"
+        link_to_message = f"{get_channel_url(original_channel)}/p{formatted_timestamp}"
         try:
             slack_web_client.chat_postMessage(
                 channel=channel_id,
