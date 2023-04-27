@@ -1,6 +1,5 @@
 import config
 import ipaddress
-import logging
 import random
 import string
 
@@ -8,7 +7,7 @@ from datetime import datetime
 from pytz import timezone
 from typing import Any, List
 
-logger = logging.getLogger("shared")
+logger = config.log.get_logger("shared")
 
 random_suffix = "".join(
     random.choices(string.ascii_lowercase + string.digits, k=6)

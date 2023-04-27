@@ -1,10 +1,10 @@
-import logging
+import config
 import sqlalchemy
 
 from bot.models.pg import Setting, Session
 from typing import Dict
 
-logger = logging.getLogger("models.setting")
+logger = config.log.get_logger("models.setting")
 
 
 def read_single_setting_value(name: str) -> Dict:

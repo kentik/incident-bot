@@ -1,9 +1,8 @@
 import config
 import json
-import logging
 import requests
 
-logger = logging.getLogger("meetings")
+logger = config.log.get_logger("meetings")
 
 
 class ZoomMeeting:

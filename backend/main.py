@@ -1,5 +1,4 @@
 import config
-import logging
 import sys
 
 from bot.api.flask import app
@@ -14,7 +13,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from waitress import serve
 
 
-logger = logging.getLogger(__name__)
+logger = config.log.get_logger(__name__)
 
 """
 Check for required environment variables first

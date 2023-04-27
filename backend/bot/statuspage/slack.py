@@ -1,9 +1,8 @@
 import config
-import logging
 
 from typing import Dict
 
-logger = logging.getLogger("statuspage.slack")
+logger = config.log.get_logger("statuspage.slack")
 
 
 def return_new_statuspage_incident_message(channel_id: str) -> Dict[str, str]:

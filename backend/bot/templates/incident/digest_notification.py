@@ -1,6 +1,6 @@
 import config
 
-from bot.slack.client import slack_workspace_id
+from bot.slack.client import get_channel_url
 from typing import Any, Dict
 
 
@@ -72,10 +72,7 @@ class IncidentChannelDigestNotification:
                                 "text": "Join Incident Channel",
                             },
                             "style": "primary",
-                            "url": "https://{}.slack.com/archives/{}".format(
-                                slack_workspace_id,
-                                incident_channel_details.get("name"),
-                            ),
+                            "url": get_channel_url(incident_channel_details.get("name")),
                             "action_id": "incident.join_incident_channel",
                         },
                         {
@@ -185,7 +182,7 @@ class IncidentChannelDigestNotification:
                             "text": "Join Incident Channel",
                         },
                         "style": "primary",
-                        "url": f"https://{slack_workspace_id}.slack.com/archives/{incident_id}",
+                        "url": get_channel_url(incident_id),
                         "action_id": "incident.join_incident_channel",
                     },
                     {

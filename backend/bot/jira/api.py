@@ -1,9 +1,8 @@
 import config
-import logging
 
 from atlassian import Jira
 
-logger = logging.getLogger("jira")
+logger = config.log.get_logger("jira")
 
 
 class JiraApi:

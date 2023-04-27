@@ -20,9 +20,9 @@ class IncidentResolutionMessage:
                     "text": {
                         "type": "mrkdwn",
                         "text": "This incident has been marked as resolved. The Incident Commander "
-                        + "will be invited to an additional channel to discuss the RCA. Please use "
+                        + "will be invited to an additional channel to discuss Incident Analysis. Please use "
                         + "that channel to coordinate with others as needed. You may optionally export "
-                        + "the chat log for this incident below so it can be referenced in the RCA.",
+                        + "the chat log for this incident below so it can be referenced during Incident Analysis.",
                     },
                 },
                 {

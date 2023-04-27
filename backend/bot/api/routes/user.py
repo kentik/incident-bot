@@ -1,6 +1,5 @@
 import config
 import json
-import logging
 
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request
@@ -30,7 +29,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 user = Blueprint("user", __name__)
 
-logger = logging.getLogger("api.user")
+logger = config.log.get_logger("api.user")
 
 # jwt
 

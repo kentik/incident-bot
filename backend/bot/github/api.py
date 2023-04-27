@@ -1,11 +1,10 @@
 import config
-import logging
 
 from typing import List, Type, TypeVar
 from dataclasses import dataclass, field
 from github import Github, Repository
 
-logger = logging.getLogger("github")
+logger = config.log.get_logger("github.api")
 
 
 GithubConfigType = TypeVar("GithubConfigType", bound="GithubConfig")

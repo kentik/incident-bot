@@ -1,4 +1,4 @@
-import logging
+import config
 
 from bot.models.pg import AuditLog, Session
 from bot.shared import tools
@@ -7,7 +7,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import scoped_session
 from typing import Dict, List, Tuple
 
-logger = logging.getLogger("audit")
+logger = config.log.get_logger("audit")
 
 
 def delete(

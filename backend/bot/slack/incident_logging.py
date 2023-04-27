@@ -1,10 +1,10 @@
-import logging
+import config
 
 from bot.models.pg import IncidentLogging, Session
 from sqlalchemy.orm import scoped_session
 from typing import List
 
-logger = logging.getLogger("slack.logging")
+logger = config.log.get_logger("slack.logging")
 
 
 def read(

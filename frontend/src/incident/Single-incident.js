@@ -577,7 +577,7 @@ const ViewSingleIncident = () => {
                   <Card variant="outlined" sx={{ marginTop: 2, marginBottom: 2, height: '100%' }}>
                     <StyledCardHeader
                       avatar={<QueryStatsIcon sx={{ marginRight: 1 }} />}
-                      title={`RCA`}
+                      title={`Incident Analysis Document`}
                       titleTypographyProps={{
                         variant: 'h6',
                         fontFamily: 'Roboto',
@@ -593,13 +593,13 @@ const ViewSingleIncident = () => {
                         }}>
                         {incident.rca !== null ? (
                           <Button variant="outlined" href={incident.rca} target="new">
-                            View RCA in Confluence
+                            View Incident Analysis Document
                           </Button>
                         ) : (
                           <>
                             <Alert color="info" variant="outlined" sx={{ width: '100%' }}>
-                              A link to the RCA will appear here once the incident is resolved and
-                              one has been generated.
+                              A link to the Incident Analysis Document will appear here once one has
+                              been generated.
                             </Alert>
                           </>
                         )}

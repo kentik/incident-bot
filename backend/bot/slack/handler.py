@@ -1,6 +1,5 @@
 import asyncio
 import config
-import logging
 import requests
 import slack_sdk
 import variables
@@ -28,7 +27,7 @@ from slack_bolt import App
 from slack_sdk.errors import SlackApiError
 from typing import Any, Dict
 
-logger = logging.getLogger("slack.handler")
+logger = config.log.get_logger("slack.handler")
 
 ## The xoxb oauth token for the bot is called here to provide bot privileges.
 app = App(token=config.slack_bot_token)
@@ -39,6 +38,10 @@ def custom_error_handler(error, body, logger):
     logger.exception(f"Error: {error}")
     logger.debug(f"Request body: {body}")
 
+
+# The import statement bellow is seemingly unused, it is though needed to register Bolt UI components and callbacks
+# The registrations is a side-effect of the import
+from . import modals
 
 tracking = DigestMessageTracking()
 

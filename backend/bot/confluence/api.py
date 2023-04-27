@@ -1,10 +1,9 @@
 import config
 import datetime
-import logging
 
 from atlassian import Confluence
 
-logger = logging.getLogger("confluence")
+logger = config.log.get_logger("confluence")
 
 
 class ConfluenceApi:

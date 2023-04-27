@@ -1,8 +1,8 @@
 import config
 import datetime
 import json
-import logging
 
+from typing import Optional
 from bot.exc import IndexNotFoundError
 from bot.models.pg import OperationalData, Session
 from bot.shared import tools
@@ -11,7 +11,7 @@ from slack_sdk.errors import SlackApiError
 
 from typing import Dict
 
-logger = logging.getLogger("slack.client")
+logger = config.log.get_logger("slack.client")
 
 # Initialize Slack clients
 slack_web_client = WebClient(token=config.slack_bot_token)
@@ -34,11 +34,9 @@ bot_user_name = (
     if not config.is_test_environment
     else "test"
 )
+slack_url = slack_web_client.auth_test().get("url")
 slack_workspace_id = (
-    slack_web_client.auth_test()
-    .get("url")
-    .replace("https://", "")
-    .split(".")[0]
+    slack_url.replace("https://", "").split(".")[0]
     if not config.is_test_environment
     else "test"
 )
@@ -96,16 +94,13 @@ def get_channel_name(channel_id: str) -> str:
 
 
 def get_digest_channel_id() -> str:
-    # Get channel id of the incidents digest channel to send updates to
-    channels = return_slack_channel_info()
-    index = tools.find_index_in_list(
-        channels, "name", config.active.digest_channel
-    )
-    if index == -1:
+    """ Get ID channel of the incidents digest channel"""
+    _id = get_slack_channel_id_by_name(config.active.digest_channel)
+    if not _id:
         raise IndexNotFoundError(
-            "Could not find index for digest channel in Slack conversations list"
+            f"Could not find digest channel '{config.active.digest_channel}' in Slack conversations list"
         )
-    return channels[index].get("id")
+    return _id
 
 
 def get_formatted_channel_history(channel_id: str, channel_name: str) -> str:
@@ -221,6 +216,20 @@ def return_slack_channel_info() -> Dict[str, str]:
     return channels
 
 
+def get_slack_channel_id_by_name(channel_name: str) -> Optional[str]:
+    """Return ID for Slack channel with given name, or None if the channel does not exist """
+    try:
+        for page in slack_web_client.conversations_list(exclude_archived=True, limit=200):
+            for channel in page.get("channels"):
+                if channel.get("name") == channel_name:
+                    channel_id = channel.get("id")
+                    logger.debug("get_slack_channel_id_by_name: %s -> %s", channel_name, channel_id)
+                    return channel_id
+    except Exception as error:
+        logger.error("Error getting Slack channel list: '%s'", error)
+    return None
+
+
 def store_slack_user_list():
     """
     Retrieves list of users from Slack organization and stores them using a clean format
@@ -286,3 +295,7 @@ def check_bot_user_in_digest_channel():
         logger.info(
             f"Bot user is already present in digest channel #{get_channel_name(channel_id=digest_channel_id)}"
         )
+
+
+def get_channel_url(channel_id: str) -> str:
+    return f"{slack_url}/archives/{channel_id}"

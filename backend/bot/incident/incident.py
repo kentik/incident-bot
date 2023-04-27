@@ -1,9 +1,10 @@
 import asyncio
 import config
 import datetime
-import logging
 import re
 import slack_sdk.errors
+
+from dataclasses import dataclass
 
 from bot.audit import log
 from bot.exc import ConfigurationError
@@ -18,6 +19,7 @@ from bot.slack.client import (
     all_workspace_groups,
     slack_web_client,
     slack_workspace_id,
+    get_channel_url,
 )
 from bot.statuspage.slack import return_new_statuspage_incident_message
 from bot.templates.incident.channel_boilerplate import (
@@ -30,7 +32,7 @@ from bot.zoom.meeting import ZoomMeeting
 from cerberus import Validator
 from typing import Any, Dict, List
 
-logger = logging.getLogger("incident.handler")
+logger = config.log.get_logger("incident.handler")
 
 # How many total characters are allowed in a Slack channel name?
 channel_name_length_cap = 80
@@ -45,48 +47,22 @@ if not config.is_test_environment:
     from bot.slack.client import invite_user_to_channel
 
 
+@dataclass
 class RequestParameters:
-    def __init__(
-        self,
-        channel: str,
-        incident_description: str,
-        severity: str,
-        user: str = "",
-        created_from_web: bool = False,
-        is_security_incident: bool = False,
-        private_channel: bool = False,
-        message_reacted_to_content: str = "",
-        original_message_timestamp: str = "",
-    ):
-        self.channel = channel
-        self.incident_description = incident_description
-        self.user = user
-        self.severity = severity
-        self.created_from_web = created_from_web
-        self.is_security_incident = is_security_incident
-        self.private_channel = private_channel
-        self.message_reacted_to_content = message_reacted_to_content
-        self.original_message_timestamp = original_message_timestamp
-
-        self.as_dict = {
-            "channel": channel,
-            "incident_description": incident_description,
-            "user": user,
-            "severity": severity,
-            "created_from_web": created_from_web,
-            "is_security_incident": is_security_incident,
-            "private_channel": private_channel,
-            "message_reacted_to_content": message_reacted_to_content,
-            "original_message_timestamp": original_message_timestamp,
-        }
-
-        self.validate()
+    channel: str
+    incident_description: str
+    severity: str
+    user: str = ""
+    created_from_web: bool = False
+    is_security_incident: bool = False
+    private_channel: bool = False
+    message_reacted_to_content: str = ""
+    original_message_timestamp: str = ""
 
     def validate(self):
-        """Given a request supplied as dict[str, any], validate its
-        fields.
+        """Validate request data
 
-        Returns bool indicating whether or not the service passes validation
+        Returns bool indicating whether request is valid
         """
         schema = {
             "channel": {
@@ -136,9 +112,9 @@ class RequestParameters:
             },
         }
         v = Validator(schema)
-        if not v.validate(self.as_dict, schema):
+        if not v.validate(self.__dict__, schema):
             raise ConfigurationError(
-                f"Request parameters has errors: {v.errors}"
+                f"Invalid request parameters: {v.errors}"
             )
 
 
@@ -244,164 +220,164 @@ def create_incident(
     incident_description = request_parameters.incident_description
     user = request_parameters.user
     severity = request_parameters.severity
-    if incident_description != "":
-        if len(incident_description) < incident_description_max_length:
-            incident = Incident(request_parameters)
-            created_channel_details = incident.created_channel_details
-            """
-            Notify incidents digest channel (#incidents)
-            """
-            try:
-                digest_message = slack_web_client.chat_postMessage(
-                    **IncidentChannelDigestNotification.create(
-                        incident_channel_details=created_channel_details,
-                        conference_bridge=incident.conference_bridge,
-                        severity=severity,
-                    ),
-                    text="New Incident",
-                )
-                logger.debug(f"\n{digest_message}\n")
-            except slack_sdk.errors.SlackApiError as error:
-                logger.error(
-                    f"Error sending message to incident digest channel: {error}"
-                )
-            logger.info(
-                "Sending message to digest channel for: {}".format(
-                    created_channel_details["name"]
-                )
-            )
-            """
-            Set incident channel topic
-            """
-            topic_boilerplate = (
-                incident.conference_bridge
-                if config.active.options.get("channel_topic").get(
-                    "set_to_meeting_link"
-                )
-                else config.active.options.get("channel_topic").get("default")
-            )
-            try:
-                topic = slack_web_client.conversations_setTopic(
-                    channel=created_channel_details["id"],
-                    topic=topic_boilerplate,
-                )
-                logger.debug(f"\n{topic}\n")
-            except slack_sdk.errors.SlackApiError as error:
-                logger.error(f"Error setting incident channel topic: {error}")
-            """
-            Send boilerplate info to incident channel
-            """
-            try:
-                bp_message = slack_web_client.chat_postMessage(
-                    **IncidentChannelBoilerplateMessage.create(
-                        incident_channel_details=created_channel_details,
-                        severity=severity,
-                    ),
-                    text="Details",
-                )
-                logger.debug(f"\n{bp_message}\n")
-            except slack_sdk.errors.SlackApiError as error:
-                logger.error(
-                    f"Error sending message to incident channel: {error}"
-                )
-            # Pin the boilerplate message to the channel for quick access.
-            slack_web_client.pins_add(
-                channel=created_channel_details["id"],
-                timestamp=bp_message["ts"],
-            )
-            """
-            Post conference link in the channel upon creation
-            """
-            try:
-                conference_bridge_message = slack_web_client.chat_postMessage(
-                    channel=created_channel_details["id"],
-                    text=f":busts_in_silhouette: Please join the conference here: {incident.conference_bridge}",
-                    blocks=[
-                        {
-                            "type": "header",
-                            "text": {
-                                "type": "plain_text",
-                                "text": ":busts_in_silhouette: Please join the conference here.",
-                            },
-                        },
-                        {"type": "divider"},
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"{incident.conference_bridge}",
-                            },
-                        },
-                    ],
-                )
-                slack_web_client.pins_add(
-                    channel=created_channel_details["id"],
-                    timestamp=conference_bridge_message["message"]["ts"],
-                )
-            except slack_sdk.errors.SlackApiError as error:
-                logger.error(
-                    f"Error sending conference bridge link to channel: {error}"
-                )
-            """
-            Write incident entry to database
-            """
-            logger.info(
-                "Writing incident entry to database for {}...".format(
-                    created_channel_details["name"]
-                )
-            )
-            try:
-                db_write_incident(
-                    incident_id=created_channel_details["name"],
-                    channel_id=created_channel_details["id"],
-                    channel_name=created_channel_details["name"],
-                    status="investigating",
-                    severity=severity,
-                    bp_message_ts=bp_message["ts"],
-                    dig_message_ts=digest_message["ts"],
-                    is_security_incident=created_channel_details[
-                        "is_security_incident"
-                    ],
-                    channel_description=created_channel_details[
-                        "incident_description"
-                    ],
-                    conference_bridge=incident.conference_bridge,
-                )
-            except Exception as error:
-                logger.fatal(f"Error writing entry to database: {error}")
-            # Tag the incident with initial creation timestamp in human readable format
-            try:
-                db_update_incident_created_at_col(
-                    incident_id=created_channel_details["name"],
-                    created_at=tools.fetch_timestamp(),
-                )
-            except Exception as error:
-                logger.fatal(
-                    f"Error updating incident entry with creation timestamp: {error}"
-                )
-
-            asyncio.run(
-                handle_incident_optional_features(
-                    request_parameters, created_channel_details, internal
-                )
-            )
-
-            # Invite the user who opened the channel to the channel.
-            invite_user_to_channel(created_channel_details["id"], user)
-            # Return for view method
-            temp_channel_id = created_channel_details["id"]
-
-            # Write audit log
-            log.write(
-                incident_id=created_channel_details["name"],
-                event="Incident created.",
-                user=user,
-            )
-            return f"I've created the incident channel: <#{temp_channel_id}>"
-        else:
-            return f"Total channel length cannot exceed 80 characters. Please use a short description less than {incident_description_max_length} characters. You used {len(incident_description)}."
-    else:
+    if not incident_description:
         return "Please provide a description for the channel."
+    if len(incident_description) >= incident_description_max_length:
+        return f"Incident description cannot exceed {incident_description_max_length} characters."\
+               f"You've used {len(incident_description)}. Please use shorter description."
+    incident = Incident(request_parameters)
+    created_channel_details = incident.created_channel_details
+    """
+    Notify incidents digest channel (#incidents)
+    """
+    digest_message = None
+    try:
+        digest_message = slack_web_client.chat_postMessage(
+            **IncidentChannelDigestNotification.create(
+                incident_channel_details=created_channel_details,
+                conference_bridge=incident.conference_bridge,
+                severity=severity,
+            ),
+            text="New Incident",
+        )
+        logger.debug(f"\n{digest_message}\n")
+    except slack_sdk.errors.SlackApiError as error:
+        logger.error(
+            f"Error sending message to incident digest channel: {error}"
+        )
+    logger.info(
+        "Sending message to digest channel for: {}".format(
+            created_channel_details["name"]
+        )
+    )
+    """
+    Set incident channel topic
+    """
+    topic_boilerplate = (
+        incident.conference_bridge
+        if config.active.options.get("channel_topic").get(
+            "set_to_meeting_link"
+        )
+        else config.active.options.get("channel_topic").get("default")
+    )
+    try:
+        topic = slack_web_client.conversations_setTopic(
+            channel=created_channel_details["id"],
+            topic=topic_boilerplate,
+        )
+        logger.debug(f"\n{topic}\n")
+    except slack_sdk.errors.SlackApiError as error:
+        logger.error(f"Error setting incident channel topic: {error}")
+    """
+    Send boilerplate info to incident channel
+    """
+    try:
+        bp_message = slack_web_client.chat_postMessage(
+            **IncidentChannelBoilerplateMessage.create(
+                incident_channel_details=created_channel_details,
+                severity=severity,
+            ),
+            text="Details",
+        )
+        logger.debug(f"\n{bp_message}\n")
+    except slack_sdk.errors.SlackApiError as error:
+        logger.error(
+            f"Error sending message to incident channel: {error}"
+        )
+    # Pin the boilerplate message to the channel for quick access.
+    slack_web_client.pins_add(
+        channel=created_channel_details["id"],
+        timestamp=bp_message["ts"],
+    )
+    """
+    Post conference link in the channel upon creation
+    """
+    try:
+        conference_bridge_message = slack_web_client.chat_postMessage(
+            channel=created_channel_details["id"],
+            text=f":busts_in_silhouette: Please join the conference here: {incident.conference_bridge}",
+            blocks=[
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": ":busts_in_silhouette: Please join the conference here.",
+                    },
+                },
+                {"type": "divider"},
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"{incident.conference_bridge}",
+                    },
+                },
+            ],
+        )
+        slack_web_client.pins_add(
+            channel=created_channel_details["id"],
+            timestamp=conference_bridge_message["message"]["ts"],
+        )
+    except slack_sdk.errors.SlackApiError as error:
+        logger.error(
+            f"Error sending conference bridge link to channel: {error}"
+        )
+    """
+    Write incident entry to database
+    """
+    logger.info(
+        "Writing incident entry to database for {}...".format(
+            created_channel_details["name"]
+        )
+    )
+    try:
+        db_write_incident(
+            incident_id=created_channel_details["name"],
+            channel_id=created_channel_details["id"],
+            channel_name=created_channel_details["name"],
+            status="investigating",
+            severity=severity,
+            bp_message_ts=bp_message["ts"],
+            dig_message_ts=digest_message["ts"],
+            is_security_incident=created_channel_details[
+                "is_security_incident"
+            ],
+            channel_description=created_channel_details[
+                "incident_description"
+            ],
+            conference_bridge=incident.conference_bridge,
+        )
+    except Exception as error:
+        logger.fatal(f"Error writing entry to database: {error}")
+    # Tag the incident with initial creation timestamp in human readable format
+    try:
+        db_update_incident_created_at_col(
+            incident_id=created_channel_details["name"],
+            created_at=tools.fetch_timestamp(),
+        )
+    except Exception as error:
+        logger.fatal(
+            f"Error updating incident entry with creation timestamp: {error}"
+        )
+
+    asyncio.run(
+        handle_incident_optional_features(
+            request_parameters, created_channel_details, internal
+        )
+    )
+
+    # Invite the user who opened the channel to the channel.
+    invite_user_to_channel(created_channel_details["id"], user)
+    # Return for view method
+    temp_channel_id = created_channel_details["id"]
+
+    # Write audit log
+    log.write(
+        incident_id=created_channel_details["name"],
+        event="Incident created.",
+        user=user,
+    )
+    return f"I've created the incident channel: <#{temp_channel_id}>"
 
 
 async def handle_incident_optional_features(
@@ -499,7 +475,7 @@ async def handle_incident_optional_features(
             request_parameters.original_message_timestamp
         )
         formatted_timestamp = str.replace(original_message_timestamp, ".", "")
-        link_to_message = f"https://{slack_workspace_id}.slack.com/archives/{original_channel}/p{formatted_timestamp}"
+        link_to_message = f"{get_channel_url(original_channel)}/p{formatted_timestamp}"
         try:
             slack_web_client.chat_postMessage(
                 channel=channel_id,
