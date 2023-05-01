@@ -1,9 +1,9 @@
-import logging
+import config
 
 from bot.models.pg import Session, TokenBlocklist, User
 from typing import Tuple
 
-logger = logging.getLogger("models.user")
+logger = config.log.get_logger("models.user")
 
 
 def db_user_token_revoke(jti, ttype, user_id, created_at):

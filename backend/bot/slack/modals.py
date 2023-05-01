@@ -1,11 +1,12 @@
 import config
-import logging
 import variables
 
+from datetime import datetime, timezone
 from bot.audit.log import read as read_logs, write as write_log
 from bot.exc import ConfigurationError
 from bot.incident import incident
 from bot.jira.issue import JiraIssue
+from bot.github.issue import GithubIssue
 from bot.models.incident import (
     db_read_all_incidents,
     db_read_incident_channel_id,
@@ -27,13 +28,10 @@ from bot.statuspage.handler import (
     StatuspageIncident,
     StatuspageIncidentUpdate,
 )
-from bot.templates.incident.updates import (
-    IncidentUpdate,
-)
+from bot.templates.incident.updates import IncidentUpdate
 from bot.templates.tools import parse_modal_values
-from datetime import datetime
 
-logger = logging.getLogger("slack.modals")
+logger = config.log.get_logger("slack.modals")
 
 placeholder_severity = [sev for sev, _ in config.active.severities.items()][-1]
 
@@ -270,6 +268,7 @@ def open_modal(ack, body, client):
             "block_id": "open_incident_modal_desc",
             "element": {
                 "type": "plain_text_input",
+                "max_length": incident.incident_description_max_length,
                 "action_id": "open_incident_modal_set_description",
                 "placeholder": {
                     "type": "plain_text",
@@ -515,8 +514,6 @@ def open_modal(ack, body, client):
 
 @app.view("open_incident_general_update_modal")
 def handle_submission(ack, body, client):
-    import sys
-
     """
     Handles open_incident_general_update_modal
     """
@@ -720,8 +717,8 @@ def update_modal(ack, body, client):
                     "text": {
                         "type": "mrkdwn",
                         "text": "*You have selected the following options - please review them carefully.*\n\n"
-                        + "Once you click Submit, an incident will be created in PagerDuty for the team listed here and they will be paged. "
-                        + "They will also be invited to the incident's Slack channel.",
+                        + "Once you click Submit, an incident will be created in PagerDuty for the team listed here"
+                        + " and they will be paged. They will also be invited to the incident's Slack channel.",
                     },
                 },
                 {"type": "divider"},
@@ -1780,5 +1777,315 @@ def handle_submission(ack, body, client, view):
             logger.error(
                 f"Error sending Jira issue message for {incident_id}: {error}"
             )
+    except Exception as error:
+        logger.error(error)
+
+
+@app.action("open_incident_create_github_issue_modal")
+def open_modal(ack, body, client):
+    """
+    Provides modal collecting data for a GitHub issue creation
+    """
+    now = datetime.now(tz=timezone.utc)
+    incident_id = body["channel"]["id"]
+    blocks = [
+        {
+            "type": "header",
+            "block_id": incident_id,
+            "text": {
+                "type": "plain_text",
+                "text": "Create a Github Issue",
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "This issue will be created in repo: *{}*".format(
+                    config.active.integrations.get("github")
+                    .get("repository")
+                ),
+            },
+        },
+        {"type": "divider"},
+        {
+            "type": "input",
+            "block_id": "github_issue_description_input",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "github.description_input",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Enter short description of the problem",
+                },
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Description",
+                "emoji": False,
+            },
+        },
+        {"type": "divider"},
+        {
+            "type": "input",
+            "block_id": "github_issue_owner_input",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "github.owner_input",
+                "min_length": 1,
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Incident owner",
+                "emoji": False,
+            },
+        },
+        {"type": "divider"},
+        {
+            "type": "input",
+            "block_id": "github_issue_start_time_input",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "github.start_time_input",
+                "min_length": 16,
+                "max_length": 16,
+                "initial_value": now.isoformat(sep=" ", timespec="minutes").split("+")[0],
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Incident start time in UTC (YYYY-MM-DD HH:MM)",
+                "emoji": False,
+            },
+        },
+        {
+            "type": "input",
+            "block_id": "github_issue_detection_time_input",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "github.detection_time_input",
+                "min_length": 16,
+                "max_length": 16,
+                "initial_value": now.isoformat(sep=" ", timespec="minutes").split("+")[0],
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Incident detection time in UTC (YYYY-MM-DD HH:MM)",
+                "emoji": False,
+            },
+        },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "block_id": "notifications_impacted_input",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*Were alarm notifications impacted?*",
+            },
+            "accessory": {
+                "action_id": "github.notifications_impacted_input",
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select...",
+                },
+                "initial_option": {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "No",
+                    },
+                    "value": "false",
+                },
+                "options": [
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Yes",
+                        },
+                        "value": "true",
+                    },
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "No",
+                        },
+                        "value": "false",
+                    },
+                ],
+            },
+        },
+        {
+            "type": "section",
+            "block_id": "ingest_impacted_input",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*Was ingest impacted?*",
+            },
+            "accessory": {
+                "action_id": "github.ingest_impacted_input",
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select...",
+                },
+                "initial_option": {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "No",
+                    },
+                    "value": "false",
+                },
+                "options": [
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Yes",
+                        },
+                        "value": "true",
+                    },
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "No",
+                        },
+                        "value": "false",
+                    },
+                ],
+            },
+        },
+        {"type": "divider"},
+        {
+            "type": "input",
+            "block_id": "github_issue_regions",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "github.regions_input",
+                "min_length": 3,
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Space separated list of affected regions or 'all'",
+                "emoji": False,
+            },
+        },
+        {
+            "type": "input",
+            "block_id": "github_issue_detection_source_input",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "github.detection_source_input",
+                "min_length": 3,
+                "initial_value": "manual",
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Source of incident detection ('manual', 'alarm', ...)",
+                "emoji": False,
+            },
+        },
+    ]
+
+    ack()
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            # View identifier
+            "callback_id": "open_incident_create_github_issue_modal",
+            "title": {
+                "type": "plain_text",
+                "text": "Github Issue",
+            },
+            "submit": {"type": "plain_text", "text": "Create"},
+            "blocks": blocks,
+        },
+    )
+
+
+@app.action("github.ingest_impacted_input")
+def handle_some_action(ack, body):
+    ack()
+    logger.debug("github.ingest_impacted_input: body: '%s'", body)
+
+
+@app.action("github.notifications_impacted_input")
+def handle_some_action(ack, body):
+    ack()
+    logger.debug("github.notifications_impacted_input: body: '%s'", body)
+
+
+@app.action("github.view_issue")
+def handle_some_action(ack, body):
+    ack()
+    logger.debug("github.view_issue: body: '%s'", body)
+
+
+@app.view("open_incident_create_github_issue_modal")
+def handle_submission(ack, body, client, view):
+    """
+    Handles submission of the open_incident_create_github_issue_modal dialog
+    """
+    ack()
+    channel_id = body.get("view").get("blocks")[0].get("block_id")
+    parsed = parse_modal_values(body)
+
+    def to_bool(s: str) -> bool:
+        m = dict(false=False, true=True)
+        return s is not None and m.get(s.lower(), bool(s))
+
+    try:
+        issue = GithubIssue(
+            channel_id=channel_id,
+            description=parsed.get("github.description_input"),
+            start_time=datetime.fromisoformat(parsed.get("github.start_time_input")),
+            detection_time=datetime.fromisoformat(parsed.get("github.detection_time_input")),
+            regions=parsed.get("github.regions_input").split(),
+            owner=parsed.get("github.owner_input"),
+            detection_source=parsed.get("github.detection_source_input"),
+            ingest_impacted=to_bool(parsed.get("github.ingest_impacted_input")),
+            notifications_impacted=to_bool(parsed.get("github.notifications_impacted_input"))
+        ).new()
+        try:
+            resp = client.chat_postMessage(
+                channel=channel_id,
+                blocks=[
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"GitHub issue has been created for this incident in {issue.repository.full_name}.",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*Title:* {issue.title}",
+                        },
+                    },
+                    {
+                        "type": "actions",
+                        "block_id": "github_view_issue",
+                        "elements": [
+                            {
+                                "type": "button",
+                                "action_id": "github.view_issue",
+                                "style": "primary",
+                                "text": {
+                                    "type": "plain_text",
+                                    "text": "View Issue",
+                                },
+                                "url": issue.html_url,
+                            },
+                        ],
+                    },
+                ],
+                text=f"Github issue #{issue.number} with title {issue.title} has been created for this incident",
+            )
+            client.pins_add(
+                channel=resp.get("channel"),
+                timestamp=resp.get("ts"),
+            )
+        except Exception as error:
+            logger.error("Error sending GitHub issue message for incident %s: '%s'", channel_id, error)
     except Exception as error:
         logger.error(error)

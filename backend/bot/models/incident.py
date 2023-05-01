@@ -1,11 +1,11 @@
 import json
-import logging
+import config
 
 from bot.models.pg import Incident, Session
 from sqlalchemy import or_
 from typing import List
 
-logger = logging.getLogger("models.incident")
+logger = config.log.get_logger("models.incident")
 
 """
 Read
@@ -434,7 +434,7 @@ def db_update_jira_issues_col(
             incident.jira_issues.append(issue_link)
         Session.commit()
     except Exception as error:
-        logger.error(f"Incident update failed for {incident_id}: {error}")
+        logger.error(f"Incident jira_issues update failed for {incident_id}: {error}")
         Session.rollback()
     finally:
         Session.close()

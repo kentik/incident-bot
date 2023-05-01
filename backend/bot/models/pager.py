@@ -1,9 +1,9 @@
-import logging
+import config
 import sqlalchemy
 
 from bot.models.pg import OperationalData, Session
 
-logger = logging.getLogger("models.pager")
+logger = config.log.get_logger("models.pager")
 
 
 def read_pager_auto_page_targets():

@@ -4,30 +4,25 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ['./wait-for-it.sh', 'db:5432', '--', 'python3', 'main.py']
+    command: ['./wait-for-it.sh', 'db:${POSTGRES_PORT}', '--', 'python3', 'main.py']
     depends_on:
       - db
     environment:
-      SLACK_APP_TOKEN: 'xapp-1-...'
-      SLACK_BOT_TOKEN: 'xoxb-...'
-      SLACK_USER_TOKEN: 'xoxp-...'
-      POSTGRES_HOST: db
-      POSTGRES_DB: incident_bot
-      POSTGRES_USER: incident_bot
-      POSTGRES_PASSWORD: somepassword
-      POSTGRES_PORT: 5432
-      PAGERDUTY_API_TOKEN: ''
-      PAGERDUTY_API_USERNAME: ''
-      STATUSPAGE_API_KEY: ''
-      STATUSPAGE_PAGE_ID: ''
-      STATUSPAGE_URL: ''
-      ATLASSIAN_API_URL: ''
-      ATLASSIAN_API_USERNAME: ''
-      ATLASSIAN_API_TOKEN: ''
-      DEFAULT_WEB_ADMIN_PASSWORD: 'foobar1234'
-      FLASK_APP_SECRET_KEY: 'supersecret'
-      JWT_SECRET_KEY: 'supersecret'
-      CONFIG_FILE_PATH: '/config/incident-bot/config.yaml'
+      - LOGLEVEL
+      - CONFIG_FILE_PATH
+      - SLACK_APP_TOKEN
+      - SLACK_BOT_TOKEN
+      - SLACK_USER_TOKEN
+      - POSTGRES_HOST
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_PORT
+      - FLASK_APP_SECRET_KEY
+      - DEFAULT_WEB_ADMIN_PASSWORD
+      - JWT_SECRET_KEY
+      - FLASK_DEBUG_MODE_ENABLED
+      - GITHUB_API_KEY
     ports:
       - target: 3000
         published: 3000
@@ -40,11 +35,11 @@ services:
       - ./backend/config.yaml:/config/incident-bot/config.yaml
   db:
     image: postgres:13
+    environment:
+      - POSTGRES_PASSWORD
+      - POSTGRES_USER
     command:
       ['postgres', '-c', 'log_statement=all', '-c', 'log_destination=stderr']
-    hostname: db
-    environment:
-      POSTGRES_PASSWORD: 'somepassword'
-      POSTGRES_USER: 'incident_bot'
+    hostname: ${POSTGRES_HOST}
     ports:
-      - 5432:5432
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}

@@ -1,6 +1,4 @@
 import config
-import logging
-import logging.config
 import sys
 
 from bot.api.flask import app
@@ -14,8 +12,8 @@ from bot.slack.handler import app as slack_app
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from waitress import serve
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(stream=sys.stdout, level=config.log_level)
+
+logger = config.log.get_logger(__name__)
 
 """
 Check for required environment variables first
@@ -23,7 +21,7 @@ Check for required environment variables first
 
 if __name__ == "__main__":
     # Pre-flight checks
-    ## Check for environment variables
+    # Check for environment variables
     config.env_check(
         required_envs=[
             "POSTGRES_DB",
@@ -79,7 +77,7 @@ def startup_tasks():
     # Integration Tests
     # --------------------
     if "atlassian" in config.active.integrations:
-        if "confluence" in config.active.integrations.get("atlassian"):
+        if "confluence" in config.active.integrations.get("atlassian", []):
             from bot.confluence.api import ConfluenceApi
 
             api_test = ConfluenceApi()
@@ -97,7 +95,7 @@ def startup_tasks():
                 )
                 sys.exit(1)
 
-        if "jira" in config.active.integrations.get("atlassian"):
+        if "jira" in config.active.integrations.get("atlassian", []):
             from bot.jira.api import JiraApi
 
             api_test = JiraApi()
