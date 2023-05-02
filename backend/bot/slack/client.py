@@ -7,6 +7,7 @@ from bot.exc import IndexNotFoundError
 from bot.models.pg import OperationalData, Session
 from bot.shared import tools
 from slack_sdk import WebClient
+from slack_sdk.http_retry import all_builtin_retry_handlers
 from slack_sdk.errors import SlackApiError
 
 from typing import Dict
@@ -14,7 +15,7 @@ from typing import Dict
 logger = config.log.get_logger("slack.client")
 
 # Initialize Slack clients
-slack_web_client = WebClient(token=config.slack_bot_token)
+slack_web_client = WebClient(token=config.slack_bot_token, retry_handlers=all_builtin_retry_handlers())
 
 """
 Reusable variables
