@@ -1,30 +1,62 @@
 # Options: slack
 platform: slack
-# The channel where incident activity is logged
-digest_channel: incidents-test
-# Roles defined here will appear as options for each incident
+# The channel where incident activity is logged (must be public)
+digest_channel: incidents
+
+# In order to be properly formatted in Slack,
+# lines in descriptions of roles and severities should be max 80 characters
+
 roles:
-  incident_commander: "The Incident Commander is the decision maker during a major incident, delegating tasks and listening to input from subject matter experts in order to bring the incident to resolution. They become the highest ranking individual on any major incident call, regardless of their day-to-day rank. Their decisions made as commander are final.\\n\\nYour job as an Incident Commander is to listen to the call and to watch the incident Slack room in order to provide clear coordination, recruiting others to gather context and details. You should not be performing any actions or remediations, checking graphs, or investigating logs. Those tasks should be delegated.\\n\\nAn IC should also be considering next steps and backup plans at every opportunity, in an effort to avoid getting stuck without any clear options to proceed and to keep things moving towards resolution.\\n\\nMore information: https://response.pagerduty.com/training/incident_commander/"
-  communications_liaison: "The purpose of the Communications Liaison is to be the primary individual in charge of notifying our customers of the current conditions, and informing the Incident Commander of any relevant feedback from customers as the incident progresses.\\n\\nIt's important for the rest of the command staff to be able to focus on the problem at hand, rather than worrying about crafting messages to customers.\\n\\nYour job as Communications Liaison is to listen to the call, watch the incident Slack room, and track incoming customer support requests, keeping track of what's going on and how far the incident is progressing (still investigating vs close to resolution).\\n\\nThe Incident Commander will instruct you to notify customers of the incident and keep them updated at various points throughout the call. You will be required to craft the message, gain approval from the IC, and then disseminate that message to customers.\\n\\nMore information: https://response.pagerduty.com/training/customer_liaison/"
+# Roles defined here will appear as options for each incident
+  incident_commander: |
+    The Incident Commander is the decision maker during a major incident,
+    collaborating with subject matter experts and other stakeholders on
+    resolution of the incident. They become the highest ranking individual on
+    any major incident call, regardless of their day-to-day role. Their
+    decisions made as commander are final.
+    
+    Your job as an Incident Commander is to monitor the conference call and
+    incident Slack channel and provide coordination, delegating tasks, gathering
+    information and keeping incident time-line and context in the GitHub issue. 
+    You should not be directly participating on mitigation, data analysis, code
+    changes or external communications. Those tasks should be delegated. Incident
+    Commander in collaboration with subject domain experts should be planning
+    next steps and coordinating creation of contingency plans.
+    
+    More information: https://response.pagerduty.com/training/incident_commander
+  communications_liaison: |
+    The Communications Liaison is in charge of notifying customers, partners
+    and other external stakeholders of the current state of the incident. It
+    should provide relevant feedback from external stakeholders to the Incident
+    Commander. The Incident Commander instructs the Communication Liaison to
+    notify customers about significant events related to the incident.
+    
+    More information: https://response.pagerduty.com/training/customer_liaison
 # Severities defined here will appear as options for each incident
 severities:
-  sev1: 'This signifies a critical production scenario that impacts most or all users with a major impact on SLAs. This is an all-hands-on-deck scenario that requires swift action to restore operation. Customers must be notified.'
-  sev2: 'This signifies a significant production degradation scenario impacting a large portion of users.'
-  sev3: 'This signifies a minor production scenario that may or may not result in degradation. This situation is worth coordination to resolve quickly but does not indicate a critical loss of service for users.'
-  sev4: 'This signifies an ongoing investigation. This incident has not been promoted to SEV3 yet, indicating there may be little to no impact, but the situation warrants a closer look. This is diagnostic in nature. This is the default setting for a new incident.'
-# Whether or not to deliver incident update reminders for critical incidents
-# This will send out a reminder message to an active incident channel at the supplied
-# interval
+  sev1: |
+    Critical production issue impacting most or all users with a major impact on
+    SLAs. This is an all-hands-on-deck scenario that requires swift action to
+    restore operation. Customers must be notified.
+  sev2: |
+    Significant performance and/or functional degradation impacting a large
+    number of users.
+  sev3: |
+    Minor production issue that may or may not user affecting impact.
+    The issue is worth coordination facilitating quick resolution but does not
+    indicate significant on SLAs.
+  sev4: |
+    Ongoing investigation. The incident has not been promoted to SEV3 yet,
+    indicating no significant on SLAs, but the situation warrants closer
+    investigation and monitoring. This is the default setting for a new incident.
+# Generate periodic reminders to incident channel
 incident_reminders:
   # Any severity in this list will have a scheduled reminder job created
-  # This job will remind the channel to send out updates at the interval
-  # specified rate below
   qualifying_severities:
     - sev1
-  # rate determines how often reminders are sent to an incident channel
-  # This is an int and is interpreted as minutes
+  # period in minutes at which reminders are sent to an incident channel
   rate: 30
-# Statuses defined here will appear as options for each incident
+# Status labels
 statuses:
   - investigating
   - identified
@@ -34,24 +66,22 @@ options:
   # The topic that will be set on all incident channels
   channel_topic:
     default: 'This is the default incident channel topic. You can edit it in settings.'
-    # If set to true, set the channel topic to the meeting link. This will override incident_channel_topic.
+    # Set the channel topic to contain the incident Zoom meeting link. Overrides incident_channel_topic.
     set_to_meeting_link: true
   # Timezone to use for logging, etc.
   timezone: UTC
-  # If not using Zoom auto-create
+  # Conference bridge link to use if auto-creation is not enabled
   conference_bridge_link: 'https://zoom.us'
-  # Allow creation of an incident by reacting to a message
+  # Allow creation of incidents by reacting to a message
   create_from_reaction:
-    # Set to true to enable
     enabled: false
-    # The name of the reacji
+    # The name of the reacji ???
     # It must exist in your workspace
     reacji: create-incident
   # Automatically invite Slack groups to newly created incidents
   auto_invite_groups:
-    # Set to true to enable
     enabled: false
-    # List of group names as configured in Slack
+    # list of group names
     groups:
       - my-slack-group
       - my-other-slack-group
@@ -62,12 +92,40 @@ options:
     # AWS ELB health check user-agent
     - ELB-HealthChecker/2.0
 integrations:
+  # Secret data is provided as environment variables for integrations
+  # Only non-secret data is configured here
+  atlassian:
+    # Enable Confluence integration
+    confluence:
+      # Set to true to automatically create an RCA doc
+      auto_create_rca: true
+      space: ENGINEERIN
+      parent: RCAs
+    # Enable Jira integration
+    jira:
+      project: 'SRE'
+      # Labels to apply to created issues
+      labels:
+        - incident-management
+  # Simply provide an empty dict to enable PagerDuty
+  # pagerduty: {}
+  # Enable Statuspage integration
+  statuspage:
+    # The public URL of the Statuspage.
+    url: https://status.mydomain
+    # Which Slack groups have permissions to manage Statuspage incidents?
+    # If not provided, everyone can manage Statuspage incidents from Slack.
+    # permissions:
+    #   groups:
+    #     - my-slack-group
+  # Enable Zoom integration
   zoom:
-    # Set to true to automatically generate a Zoom meeting for each incident
-    auto_create_meeting: false
+    # Automatically generate Zoom meeting for each incident
+    auto_create_meeting: true
   github:
-    repository: 'mmac-m3a/kentik-incident-test'
-    issue_template: '.github/ISSUE_TEMPLATE/production-incident-tracking-template.md'
+    # Allow creation of GitHub issue from a template stored in the repo
+    repository: '<owner>/<repo>'
+    issue_template: '<repo_path_to_issue_template>'
 
 links:
   incident_guide: https://changeme.com

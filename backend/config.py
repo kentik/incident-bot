@@ -51,7 +51,7 @@ logging.basicConfig(stream=sys.stdout, level=log.log_level)
 
 logger = log.get_logger("config")
 logger.info("base log level: %s", log.log_level)
-logger.debug("module log levels: %s", ",".join([f"m:l" for m, l in log.module_log_levels.items()]))
+logger.debug("module log levels: %s", ",".join([f"{m}:{l}" for m, l in log.module_log_levels.items()]))
 
 
 """
