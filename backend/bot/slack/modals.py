@@ -2091,6 +2091,8 @@ def handle_submission(ack, body, client, view):
                 timestamp=resp.get("ts"),
             )
         except Exception as error:
-            logger.error("Error sending GitHub issue message for incident %s: '%s'", channel_id, error)
+            logger.error(
+                "open_incident_create_github_issue_modal: Error sending GitHub issue message for incident %s: '%s'",
+                channel_id, error)
     except Exception as error:
-        logger.error(error)
+        logger.error("open_incident_create_github_issue_modal: channel_id: %s exception: %s", channel_id, error)
