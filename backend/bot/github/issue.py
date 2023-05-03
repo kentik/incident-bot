@@ -89,11 +89,7 @@ class GithubIssue:
             slack_channel_id=self.incident.channel_id,
             detection_source=self.detection_source
         )
-        try:
-            self.issue = self.api.repo.create_issue(title, body=body, labels=self.template.labels)
-            logger.debug("%s.new: incident: %s issue: %s", self.__class__.__name__, self.incident_id, self.issue)
-        except Exception as error:
-            logger.error("Error creating Github issue for incident '%s': '%s'", self.incident_id, error)
-            return None
+        self.issue = self.api.repo.create_issue(title, body=body, labels=self.template.labels)
+        logger.debug("%s.new: incident: %s issue: %s", self.__class__.__name__, self.incident_id, self.issue)
         db_update_incident_rca_col(channel_id=self.incident.channel_id, rca=self.issue.html_url)
         return self.issue
