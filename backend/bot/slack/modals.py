@@ -2044,6 +2044,9 @@ def handle_submission(ack, body, client, view):
             ingest_impacted=to_bool(parsed.get("github.ingest_impacted_input")),
             notifications_impacted=to_bool(parsed.get("github.notifications_impacted_input"))
         ).new()
+        if not issue:
+            logger.error("channel_id: %s Failed to create GitHub issue", channel_id)
+            return
         try:
             resp = client.chat_postMessage(
                 channel=channel_id,
