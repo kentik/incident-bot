@@ -2034,6 +2034,20 @@ def handle_submission(ack, body, client, view):
         m = dict(false=False, true=True)
         return s is not None and m.get(s.lower(), bool(s))
 
+    def send_msg(blocks, text) -> Any:
+        try:
+            return client.chat_postMessage(
+                channel=channel_id,
+                blocks=blocks,
+                text=text,
+            )
+        except Exception as e:
+            logger.error(
+                "open_incident_create_github_issue_modal: Error sending GitHub issue message for incident %s: '%s'",
+                channel_id, e
+            )
+        return None
+
     try:
         issue = GithubIssue(
             channel_id=channel_id,
@@ -2051,50 +2065,64 @@ def handle_submission(ack, body, client, view):
     except Exception as exc:
         logger.error("open_incident_create_github_issue_modal: channel_id: %s failed to create GitHub issue: %s",
                      channel_id, exc)
+        # Report failure
+        send_msg(blocks=[
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"Failed to create GitHub issue.",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*Error:* {exc}",
+                        },
+                    },
+                ],
+                text=f"Failed to create Github issue",
+        )
         return
 
-    try:
-        resp = client.chat_postMessage(
-            channel=channel_id,
-            blocks=[
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"GitHub issue has been created for this incident in {issue.repository}.",
-                    },
+    # Report success
+    resp = send_msg(blocks=[
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"GitHub issue has been created for this incident in {issue.repository}.",
                 },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*Title:* {issue.title}",
-                    },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Title:* {issue.title}",
                 },
-                {
-                    "type": "actions",
-                    "block_id": "github_view_issue",
-                    "elements": [
-                        {
-                            "type": "button",
-                            "action_id": "github.view_issue",
-                            "style": "primary",
-                            "text": {
-                                "type": "plain_text",
-                                "text": "View Issue",
-                            },
-                            "url": issue.link,
+            },
+            {
+                "type": "actions",
+                "block_id": "github_view_issue",
+                "elements": [
+                    {
+                        "type": "button",
+                        "action_id": "github.view_issue",
+                        "style": "primary",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "View Issue",
                         },
-                    ],
-                },
-            ],
-            text=f"Github issue #{issue.number} with title {issue.title} has been created for this incident",
-        )
+                        "url": issue.link,
+                    },
+                ],
+            },
+        ],
+        text=f"Github issue #{issue.number} with title {issue.title} has been created for this incident",
+    )
+    if resp:
         client.pins_add(
             channel=resp.get("channel"),
             timestamp=resp.get("ts"),
         )
-    except Exception as exc:
-        logger.error(
-            "open_incident_create_github_issue_modal: Error sending GitHub issue message for incident %s: '%s'",
-            channel_id, exc)
