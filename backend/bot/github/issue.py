@@ -50,21 +50,31 @@ class GithubIssue:
         self.incident = db_read_incident(channel_id=channel_id)
         template = TemplateData.from_repo_path(self.api.repo, self.api.config.template_path)
         title = self.incident.channel_description
-        title = template.title_template.format(
-            date=start_time.date().isoformat(),
-            incident_title=title)
-        body = template.body_template.format(
-            description=description,
-            incident_start=start_time.isoformat(sep=" ", timespec="minutes"),
-            incident_detection=detection_time.isoformat(sep=" ", timespec="minutes"),
-            regions=" ".join(regions),
-            ingest_impacted=ingest_impacted,
-            notifications_impacted=notifications_impacted,
-            owner=owner,
-            slack_channel_name=self.incident.channel_name,
-            slack_channel_id=self.incident.channel_id,
-            detection_source=detection_source
-        )
+        try:
+            title = template.title_template.format(
+                date=start_time.date().isoformat(),
+                incident_title=title)
+        except NameError as exc:
+            raise RuntimeError(
+                f"Incident id: {self.incident_id} - Failed to format GitHub issue title. Unknown macro: {exc}"
+            )
+        try:
+            body = template.body_template.format(
+                description=description,
+                incident_start=start_time.isoformat(sep=" ", timespec="minutes"),
+                incident_detection=detection_time.isoformat(sep=" ", timespec="minutes"),
+                regions=" ".join(regions),
+                ingest_impacted=ingest_impacted,
+                notifications_impact=notifications_impacted,
+                owner=owner,
+                slack_channel_name=self.incident.channel_name,
+                slack_channel_id=self.incident.channel_id,
+                detection_source=detection_source
+            )
+        except NameError as exc:
+            raise RuntimeError(
+                f"Incident id: {self.incident_id} - Failed to format GitHub issue body. Unknown macro: {exc}"
+            )
         try:
             self.issue = self.api.repo.create_issue(title, body=body, labels=template.labels)
             logger.debug("%s: incident: %s issue: %s", self.__class__.__name__, self.incident_id, self.issue)
