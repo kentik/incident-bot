@@ -54,9 +54,9 @@ class GithubIssue:
             title = template.title_template.format(
                 date=start_time.date().isoformat(),
                 incident_title=title)
-        except NameError as exc:
+        except KeyError as exc:
             raise RuntimeError(
-                f"Incident id: {self.incident_id} - Failed to format GitHub issue title. Unknown macro: {exc}"
+                f"Failed to format GitHub issue title. Unknown macro: {exc}"
             )
         try:
             body = template.body_template.format(
@@ -65,26 +65,26 @@ class GithubIssue:
                 incident_detection=detection_time.isoformat(sep=" ", timespec="minutes"),
                 regions=" ".join(regions),
                 ingest_impacted=ingest_impacted,
-                notifications_impact=notifications_impacted,
+                notifications_impacted=notifications_impacted,
                 owner=owner,
                 slack_channel_name=self.incident.channel_name,
                 slack_channel_id=self.incident.channel_id,
                 detection_source=detection_source
             )
-        except NameError as exc:
+        except KeyError as exc:
             raise RuntimeError(
-                f"Incident id: {self.incident_id} - Failed to format GitHub issue body. Unknown macro: {exc}"
+                f"Failed to format GitHub issue body. Unknown macro: {exc}"
             )
         try:
             self.issue = self.api.repo.create_issue(title, body=body, labels=template.labels)
             logger.debug("%s: incident: %s issue: %s", self.__class__.__name__, self.incident_id, self.issue)
         except Exception as exc:
-            raise RuntimeError(f"{self.__class__.__name__}: repo.create_issue raised: '{exc}")
+            raise RuntimeError(f"GitHub API repo.create_issue request failed: '{exc}")
         try:
             db_update_incident_rca_col(channel_id=self.incident.channel_id, rca=self.issue.html_url)
             logger.debug("%s: incident: %s db_update succeeded", self.__class__.__name__, self.incident_id)
         except Exception as exc:
-            raise RuntimeError(f"{self.__class__.__name__}: db_update_incident_rca_col raised: '{exc}")
+            logger.error("%s: db_update_incident_rca_col raised: '%s", self.__class__.__name__, exc)
         logger.debug("%s", self)
 
     @property
