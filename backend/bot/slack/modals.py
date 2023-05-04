@@ -2,6 +2,8 @@ import config
 import variables
 
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+
 from bot.audit.log import read as read_logs, write as write_log
 from bot.exc import ConfigurationError
 from bot.incident import incident
@@ -2032,7 +2034,7 @@ def handle_submission(ack, body, client, view):
         m = dict(false=False, true=True)
         return s is not None and m.get(s.lower(), bool(s))
 
-    def send_msg(blocks, text) -> Any:
+    def send_msg(blocks, text) -> Optional[Dict[str, Any]]:
         try:
             return client.chat_postMessage(
                 channel=channel_id,
