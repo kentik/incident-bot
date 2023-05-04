@@ -48,17 +48,43 @@ class GithubIssue:
     ):
         self.api = GithubApi()
         self.incident = db_read_incident(channel_id=channel_id)
-        self.template = TemplateData.from_repo_path(self.api.repo, self.api.config.template_path)
-        self.title = self.incident.channel_description
-        self.description = description
-        self.start_time = start_time
-        self.detection_time = detection_time
-        self.regions = regions
-        self.owner = owner
-        self.detection_source = detection_source
-        self.ingest_impacted = ingest_impacted
-        self.notifications_impacted = notifications_impacted
-        self.issue = None
+        template = TemplateData.from_repo_path(self.api.repo, self.api.config.template_path)
+        title = self.incident.channel_description
+        try:
+            title = template.title_template.format(
+                date=start_time.date().isoformat(),
+                incident_title=title)
+        except KeyError as exc:
+            raise RuntimeError(
+                f"Failed to format GitHub issue title. Unknown macro: {exc}"
+            )
+        try:
+            body = template.body_template.format(
+                description=description,
+                incident_start=start_time.isoformat(sep=" ", timespec="minutes"),
+                incident_detection=detection_time.isoformat(sep=" ", timespec="minutes"),
+                regions=" ".join(regions),
+                ingest_impacted=ingest_impacted,
+                notifications_impacted=notifications_impacted,
+                owner=owner,
+                slack_channel_name=self.incident.channel_name,
+                slack_channel_id=self.incident.channel_id,
+                detection_source=detection_source
+            )
+        except KeyError as exc:
+            raise RuntimeError(
+                f"Failed to format GitHub issue body. Unknown macro: {exc}"
+            )
+        try:
+            self.issue = self.api.repo.create_issue(title, body=body, labels=template.labels)
+            logger.debug("%s: incident: %s issue: %s", self.__class__.__name__, self.incident_id, self.issue)
+        except Exception as exc:
+            raise RuntimeError(f"GitHub API repo.create_issue request failed: '{exc}")
+        try:
+            db_update_incident_rca_col(channel_id=self.incident.channel_id, rca=self.issue.html_url)
+            logger.debug("%s: incident: %s db_update succeeded", self.__class__.__name__, self.incident_id)
+        except Exception as exc:
+            logger.error("%s: db_update_incident_rca_col raised: '%s", self.__class__.__name__, exc)
         logger.debug("%s", self)
 
     @property
@@ -68,32 +94,22 @@ class GithubIssue:
         else:
             return None
 
+    @property
+    def title(self) -> str:
+        return self.issue.title
+
+    @property
+    def number(self) -> str:
+        return self.issue.number
+
+    @property
+    def link(self) -> str:
+        return self.issue.html_url
+
+    @property
+    def repository(self):
+        return self.issue.repository.full_name
+
     def __repr__(self):
         attrs = ",".join([f"{k}={v}" for k, v in self.__dict__.items() if not hasattr(v, "__dict__")])
         return f"{self.__class__.__name__}(incident_id={self.incident_id},{attrs})"
-
-    def new(self):
-        """Create GitHub issue"""
-        title = self.template.title_template.format(
-            date=self.start_time.date().isoformat(),
-            incident_title=self.title)
-        body = self.template.body_template.format(
-            description=self.description,
-            incident_start=self.start_time.isoformat(sep=" ", timespec="minutes"),
-            incident_detection=self.detection_time.isoformat(sep=" ", timespec="minutes"),
-            regions=" ".join(self.regions),
-            ingest_impacted=self.ingest_impacted,
-            notifications_impacted=self.notifications_impacted,
-            owner=self.owner,
-            slack_channel_name=self.incident.channel_name,
-            slack_channel_id=self.incident.channel_id,
-            detection_source=self.detection_source
-        )
-        try:
-            self.issue = self.api.repo.create_issue(title, body=body, labels=self.template.labels)
-            logger.debug("%s.new: incident: %s issue: %s", self.__class__.__name__, self.incident_id, self.issue)
-        except Exception as error:
-            logger.error("Error creating Github issue for incident '%s': '%s'", self.incident_id, error)
-            return None
-        db_update_incident_rca_col(channel_id=self.incident.channel_id, rca=self.issue.html_url)
-        return self.issue
