@@ -15,21 +15,30 @@ random_suffix = "".join(
 timestamp_fmt = "%Y-%m-%dT%H:%M:%S %Z"
 timestamp_fmt_short = "%d/%m/%Y %H:%M:%S %Z"
 
-application_timezone = config.active.options.get("timezone")
+application_timezone = timezone(config.active.options.get("timezone"))
+
+
+def db_timestamp(ts: datetime) -> str:
+    if ts.tzinfo:
+        if ts.tzinfo != application_timezone:
+            return ts.astimezone(application_timezone).strftime(timestamp_fmt_short)
+        else:
+            return ts.strftime(timestamp_fmt_short)
+    else:
+        return application_timezone.localize(ts).strftime(timestamp_fmt_short)
 
 
 def fetch_timestamp(short: bool = False):
     """Return a localized, formatted timestamp using datetime.now()"""
-    now = datetime.now()
-    localized = timezone(application_timezone).localize(now)
+    now = datetime.now(tz=application_timezone)
     if short:
-        return localized.strftime(timestamp_fmt_short)
-    return localized.strftime(timestamp_fmt)
+        return now.strftime(timestamp_fmt_short)
+    return now.strftime(timestamp_fmt)
 
 
 def fetch_timestamp_from_time_obj(t: datetime):
     """Return a localized, formatted timestamp using datetime.datetime class"""
-    return timezone(application_timezone).localize(t).strftime(timestamp_fmt)
+    return application_timezone.localize(t).strftime(timestamp_fmt)
 
 
 def find_index_in_list(lst: List, key: Any, value: Any):
