@@ -3,6 +3,9 @@ import config
 import requests
 import slack_sdk
 import variables
+from typing import Any, Dict, List
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from bot.exc import ConfigurationError
 from bot.incident import actions as inc_actions, incident
@@ -23,9 +26,10 @@ from bot.slack.messages import (
     job_list_message,
     pd_on_call_message,
 )
+from bot.github import GithubIssue
+from bot.models.incident import db_read_incident
 from slack_bolt import App
 from slack_sdk.errors import SlackApiError
-from typing import Any, Dict
 
 logger = config.log.get_logger("slack.handler")
 
@@ -40,7 +44,7 @@ def custom_error_handler(error, body, logger):
 
 
 # The import statement bellow is seemingly unused, it is though needed to register Bolt UI components and callbacks
-# The registrations is a side-effect of the import
+# The registrations is a side effect of the import
 from . import modals
 
 tracking = DigestMessageTracking()
@@ -186,45 +190,141 @@ Reactions
 """
 
 
+def make_reacji_incident(reaction, channel_id, timestamp):
+    """"
+    Incident creation based on the reacji channeler
+    """
+    if (config.active.options.get("create_from_reaction", {"enabled": False})["enabled"] or
+            reaction != config.active.options.get("create_from_reaction").get("reacji")):
+        # not a reacji message or incident creation based on reaction is not enabled
+        return False
+
+    # Retrieve the content of the message that was reacted to
+    try:
+        result = slack_web_client.conversations_history(channel=channel_id,
+                                                        inclusive=True,
+                                                        oldest=timestamp,
+                                                        limit=1)
+    except Exception as error:
+        logger.error(f"Failed to retrieve a message: error: %s", error)
+        return True
+    # Create request parameters object
+    try:
+        request_parameters = incident.RequestParameters(
+            channel=channel_id,
+            incident_description=f"auto-{tools.random_suffix}",
+            user="internal_auto_create",
+            severity="sev4",
+            message_reacted_to_content=result["messages"][0]["text"],
+            original_message_timestamp=timestamp,
+            is_security_incident=False,
+            private_channel=False,
+        )
+    except ConfigurationError as error:
+        logger.error("Failed to create incident request: error: %s", error)
+        return True
+    # Create an incident based on the message using the internal path
+    try:
+        incident.create_incident(internal=True, request_parameters=request_parameters)
+    except Exception as error:
+        logger.error(f"Failed to create new incident: error: %s", error)
+    return True
+
+
+@dataclass
+class FileInfo:
+    """
+    Information about a file data attached to a Slack message
+    """
+    name: str
+    mimetype: str
+    content: Any
+    timestamp: datetime
+    link: str
+
+
+class MessageContent:
+    """
+    Representation of a Slack message content for the purpose of storing pinned content
+    """
+    def __init__(self, message):
+        self.user = get_user_name(user_id=message["user"])
+        self.timestamp = datetime.fromtimestamp(float(message["ts"]), tz=timezone.utc)
+        self.text = message["text"]
+        self.files: List[FileInfo] = []
+        for file in message.get("files", []):
+            try:
+                res = requests.get(
+                    file["url_private"],
+                    headers={"Authorization": f"Bearer {config.slack_bot_token}"},
+                    params={"pub_secret": file["permalink_public"].split("-")[3]},
+                )
+            except Exception as exc:
+                logger.error("Failed to download file '%s', error: %s", file["name"], exc)
+                continue
+            self.files.append(
+                FileInfo(
+                    name=file["name"],
+                    mimetype=file["mimetype"],
+                    timestamp=datetime.fromtimestamp(float(file["timestamp"]), tz=timezone.utc),
+                    content=res.content,
+                    link=file["url_private"]
+                )
+            )
+
+    def __str__(self):
+        return ",".join([f"{k}:{v}" for k,v in self.__dict__.items()])
+
+    def store_to_db(self, incident_id, error_reporter):
+        non_images = [f for f in self.files if "image" not in f.mimetype]
+        if non_images:
+            error_reporter(f"{len(non_images)} non-image file(s) ignored. I can currently only attach images.")
+
+        nr_images = 0
+        for file in [f for f in self.files if "image" in f.mimetype]:
+            write_content(
+                incident_id=incident_id,
+                title=file.name,
+                img=file.content,
+                mimetype=file.mimetype,
+                ts=tools.db_timestamp(file.timestamp),
+                user=self.user,
+            )
+            nr_images += 1
+        write_content(
+            incident_id=incident_id,
+            content=self.text,
+            ts=tools.db_timestamp(self.timestamp),
+            user=self.user,
+        )
+        logger.debug("reaction_added: incident_id: '%s' pinned content stored to DB, text: '%s' %d images",
+                     incident_id, self.text, nr_images)
+
+    def as_github_issue_comment(self, incident):
+        try:
+            issue = GithubIssue(incident)
+            issue.create_comment(self.text + "\n" + "\n".join([f"[{f.name}]({f.link})" for f in self.files]))
+        except RuntimeError as exc:
+            logger.error("Failed to store pinned content in GitHub issue - error: '%s'", exc)
+
+
 @app.event("reaction_added")
 def reaction_added(event, say):
+    logger.debug("reaction_added: event: %s, say: %s", event, say)
     emoji = event["reaction"]
     channel_id = event["item"]["channel"]
     ts = event["item"]["ts"]
     # Automatically create incident based on reaction with specific emoji
-    if emoji == config.active.options.get("create_from_reaction").get(
-        "reacji"
-    ) and config.active.options.get("create_from_reaction").get("enabled"):
-        # Retrieve the content of the message that was reacted to
-        try:
-            result = slack_web_client.conversations_history(
-                channel=channel_id, inclusive=True, oldest=ts, limit=1
-            )
-            message = result["messages"][0]
-            message_reacted_to_content = message["text"]
-        except Exception as error:
-            logger.error(f"Error when trying to retrieve a message: {error}")
-        # Create request parameters object
-        try:
-            request_parameters = incident.RequestParameters(
-                channel=channel_id,
-                incident_description=f"auto-{tools.random_suffix}",
-                user="internal_auto_create",
-                severity="sev4",
-                message_reacted_to_content=message_reacted_to_content,
-                original_message_timestamp=ts,
-                is_security_incident=False,
-                private_channel=False,
-            )
-        except ConfigurationError as error:
-            logger.error(error)
-        # Create an incident based on the message using the internal path
-        try:
-            incident.create_incident(
-                internal=True, request_parameters=request_parameters
-            )
-        except Exception as error:
-            logger.error(f"Error when trying to create an incident: {error}")
+    logger.debug("reaction: channel_id: %s ts: %s emoji: %s", channel_id, emoji, ts)
+
+    if make_reacji_incident(emoji, channel_id, ts):
+        # reaction was from reacji, we are done
+        return
+
+    if emoji != "pushpin":
+        # Not a pinned content
+        return
+
     # Pinned content for incidents
     if emoji == "pushpin":
         channel_info = slack_web_client.conversations_info(channel=channel_id)
@@ -297,15 +397,21 @@ def reaction_added(event, say):
                         name="white_check_mark",
                         timestamp=ts,
                     )
+                    if config.active.integrations.get("github"):
+                        try:
+                            incident = db_read_incident(channel_id=channel_id)
+                            message.as_github_issue_comment(incident)
+                        except Exception as exc:
+                            logger.debug("reaction_added: Failed to lookup incident with channel_id: '%s' - error: %s", channel_id, exc)
                 except Exception as error:
                     if "already_reacted" in str(error):
                         reason = "It looks like I've already pinned that content."
                     else:
                         reason = f"Something went wrong: {error}"
-                    say(
-                        channel=channel_id,
-                        text=f":wave: Hey there! I was unable to pin that message. {reason}",
-                    )
+                        say(
+                            channel=channel_id,
+                            text=f":wave: Hey there! I was unable to pin that message. {reason}",
+                        )
 
 
 """
@@ -314,11 +420,11 @@ Helper Functions
 
 
 @app.event("message")
-def handle_message_events(body, logger):
-    logger.debug(body)
+def handle_message_events(body):
     """
     Handle monitoring digest channel
     """
+    logger.debug("handle_message_events: body: %s", body)
     if (
         # The presence of subtype indicates events like message updates, etc.
         # We don't want to act on these.
@@ -410,7 +516,7 @@ def handle_static_action(ack, body):
 
 
 @app.action("statuspage.components_status_select")
-def handle_static_action(ack, body, logger):
+def handle_static_action(ack, body):
     logger.debug(body)
     ack()
 
@@ -445,7 +551,7 @@ Jira
 
 
 @app.action("jira.description_input")
-def handle_static_action(ack, body, logger):
+def handle_static_action(ack, body):
     logger.debug(body)
     ack()
 
