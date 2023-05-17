@@ -8,7 +8,7 @@ from bot.audit.log import read as read_logs, write as write_log
 from bot.exc import ConfigurationError
 from bot.incident import incident
 from bot.jira.issue import JiraIssue
-from bot.github.issue import GithubIssue
+from bot.github import GithubIssue
 from bot.models.incident import (
     db_read_all_incidents,
     db_read_incident_channel_id,
@@ -73,9 +73,9 @@ def update_home_tab(client, event, logger):
             "text": {
                 "type": "mrkdwn",
                 "text": "*Hi there, <@"
-                + event["user"]
-                + "> :wave:*!\n\nI'm your friendly Incident Bot, and my "
-                + "sole purpose is to help us identify and run incidents.\n",
+                        + event["user"]
+                        + "> :wave:*!\n\nI'm your friendly Incident Bot, and my "
+                        + "sole purpose is to help us identify and run incidents.\n",
             },
         },
         {
@@ -91,9 +91,9 @@ def update_home_tab(client, event, logger):
             "text": {
                 "type": "mrkdwn",
                 "text": "To start a new incident, you can do the following:\n"
-                + "- Use the button here\n "
-                + "- Search for 'start a new incident' in the Slack search bar\n"
-                + "- type _/start_ in any Slack channel to find my command and run it.",
+                        + "- Use the button here\n "
+                        + "- Search for 'start a new incident' in the Slack search bar\n"
+                        + "- type _/start_ in any Slack channel to find my command and run it.",
             },
         },
         {
@@ -182,9 +182,9 @@ def open_modal(ack, body, client):
             "text": {
                 "type": "mrkdwn",
                 "text": "This will start a new incident channel and you will "
-                + "be invited to it. From there, please use our incident "
-                + "management process to run the incident or coordinate "
-                + "with others to do so.",
+                        + "be invited to it. From there, please use our incident "
+                        + "management process to run the incident or coordinate "
+                        + "with others to do so.",
             },
         },
         {
@@ -327,7 +327,7 @@ def open_modal(ack, body, client):
                         "text": {
                             "type": "mrkdwn",
                             "text": ":point_right: *The following teams will "
-                            + "be automatically paged when this incident is created:*",
+                                    + "be automatically paged when this incident is created:*",
                         },
                     },
                 ]
@@ -381,17 +381,17 @@ def handle_submission(ack, body, client):
             is_security_incident=parsed.get(
                 "open_incident_modal_set_security_type"
             )
-            in (
-                "True",
-                "true",
-                True,
-            ),
+                                 in (
+                                     "True",
+                                     "true",
+                                     True,
+                                 ),
             private_channel=parsed.get("open_incident_modal_set_private")
-            in (
-                "True",
-                "true",
-                True,
-            ),
+                            in (
+                                "True",
+                                "true",
+                                True,
+                            ),
         )
         resp = incident.create_incident(request_parameters)
         client.chat_postMessage(channel=user, text=resp)
@@ -421,9 +421,9 @@ def open_modal(ack, body, client):
                 "text": {
                     "type": "mrkdwn",
                     "text": "This will send a formatted, timestamped message "
-                    + "to the public incidents channel to provide an update "
-                    + "on the status of an incident. Use this to keep those "
-                    + "outside the incident process informed.",
+                            + "to the public incidents channel to provide an update "
+                            + "on the status of an incident. Use this to keep those "
+                            + "outside the incident process informed.",
                 },
             },
             {
@@ -719,8 +719,8 @@ def update_modal(ack, body, client):
                     "text": {
                         "type": "mrkdwn",
                         "text": "*You have selected the following options - please review them carefully.*\n\n"
-                        + "Once you click Submit, an incident will be created in PagerDuty for the team listed here"
-                        + " and they will be paged. They will also be invited to the incident's Slack channel.",
+                                + "Once you click Submit, an incident will be created in PagerDuty for the team listed here"
+                                + " and they will be paged. They will also be invited to the incident's Slack channel.",
                     },
                 },
                 {"type": "divider"},
@@ -794,7 +794,7 @@ def handle_submission(ack, body, say, view):
         say(
             channel=incident_channel_id,
             text=f"*NOTICE:* I have paged the team/escalation policy '{team}' "
-            + f"to respond to this incident via PagerDuty at the request of *{paging_user}*.",
+                 + f"to respond to this incident via PagerDuty at the request of *{paging_user}*.",
             blocks=[
                 {
                     "type": "header",
@@ -917,7 +917,7 @@ def update_modal(ack, body, client):
             "text": {
                 "type": "mrkdwn",
                 "text": "Add a new event to the incident's timeline. This will "
-                + "be automatically added to the RCA when the incident is resolved.\n",
+                        + "be automatically added to the RCA when the incident is resolved.\n",
             },
         },
         {"type": "divider"},
@@ -1118,8 +1118,8 @@ def open_modal(ack, body, client):
             "text": {
                 "type": "mrkdwn",
                 "text": "This Statuspage incident will start in "
-                + "*investigating* mode. You may change its status as the "
-                + "incident proceeds.",
+                        + "*investigating* mode. You may change its status as the "
+                        + "incident proceeds.",
             },
         },
         {"type": "divider"},
@@ -1128,9 +1128,9 @@ def open_modal(ack, body, client):
             "text": {
                 "type": "mrkdwn",
                 "text": "Please enter a brief description that will appear "
-                + "as the incident description in the Statuspage incident. "
-                + "Then select impacted components and confirm. Once "
-                + "confirmed, the incident will be opened.",
+                        + "as the incident description in the Statuspage incident. "
+                        + "Then select impacted components and confirm. Once "
+                        + "confirmed, the incident will be opened.",
             },
         },
         {"type": "divider"},
@@ -1274,32 +1274,12 @@ def open_modal(ack, body, client):
 
     # Return modal only if user has permissions
     sp_config = config.active.integrations.get("statuspage")
-    if sp_config.get("permissions") and sp_config.get("permissions").get(
-        "groups"
-    ):
-        for gr in sp_config.get("permissions").get("groups"):
-            if check_user_in_group(user_id=user, group_name=gr):
-                client.views_open(
-                    trigger_id=body["trigger_id"],
-                    view={
-                        "type": "modal",
-                        # View identifier
-                        "callback_id": "open_statuspage_incident_modal",
-                        "title": {
-                            "type": "plain_text",
-                            "text": "Statuspage Incident",
-                        },
-                        "submit": {"type": "plain_text", "text": "Start"},
-                        "blocks": blocks,
-                    },
-                )
-            else:
-                client.chat_postEphemeral(
-                    channel=incident_id,
-                    user=user,
-                    text="You don't have permissions to manage Statuspage incidents.",
-                )
-    else:
+    if (not sp_config.get("permissions")
+            or not sp_config.get("permissions").get("groups")
+            or any(g for g in sp_config["permissions"]["groups"]
+                   if check_user_in_group(user_id=user, group_name=g))):
+        # either not groups were configured of the user is in the group permitted to create
+        # StatusPage incidents
         client.views_open(
             trigger_id=body["trigger_id"],
             view={
@@ -1313,6 +1293,12 @@ def open_modal(ack, body, client):
                 "submit": {"type": "plain_text", "text": "Start"},
                 "blocks": blocks,
             },
+        )
+    else:
+        client.chat_postEphemeral(
+            channel=incident_id,
+            user=user,
+            text="You don't have permissions to manage Statuspage incidents.",
         )
 
 
@@ -1458,7 +1444,7 @@ def open_modal(ack, body, client):
     # Return modal only if user has permissions
     sp_config = config.active.integrations.get("statuspage")
     if sp_config.get("permissions") and sp_config.get("permissions").get(
-        "groups"
+            "groups"
     ):
         for gr in sp_config.get("permissions").get("groups"):
             if check_user_in_group(user_id=user, group_name=gr):
@@ -2049,8 +2035,8 @@ def handle_submission(ack, body, client, view):
         return None
 
     try:
-        issue = GithubIssue(
-            channel_id=channel_id,
+        issue = GithubIssue(incident=db_read_incident(channel_id=channel_id))
+        issue.new(
             description=parsed.get("github.description_input"),
             start_time=datetime.fromisoformat(parsed.get("github.start_time_input")),
             detection_time=datetime.fromisoformat(parsed.get("github.detection_time_input")),
@@ -2067,58 +2053,58 @@ def handle_submission(ack, body, client, view):
                      channel_id, exc)
         # Report failure
         send_msg(blocks=[
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": f"Failed to create GitHub issue.",
-                        },
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": f"*Error:* {exc}",
-                        },
-                    },
-                ],
-                text=f"Failed to create Github issue",
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"Failed to create GitHub issue.",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Error:* {exc}",
+                },
+            },
+        ],
+            text=f"Failed to create Github issue",
         )
         return
 
     # Report success
     resp = send_msg(blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"GitHub issue has been created for this incident in {issue.repository}.",
-                },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"GitHub issue has been created for this incident in {issue.repository}.",
             },
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*Title:* {issue.title}",
-                },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Title:* {issue.title}",
             },
-            {
-                "type": "actions",
-                "block_id": "github_view_issue",
-                "elements": [
-                    {
-                        "type": "button",
-                        "action_id": "github.view_issue",
-                        "style": "primary",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "View Issue",
-                        },
-                        "url": issue.link,
+        },
+        {
+            "type": "actions",
+            "block_id": "github_view_issue",
+            "elements": [
+                {
+                    "type": "button",
+                    "action_id": "github.view_issue",
+                    "style": "primary",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "View Issue",
                     },
-                ],
-            },
-        ],
+                    "url": issue.link,
+                },
+            ],
+        },
+    ],
         text=f"Github issue #{issue.number} with title {issue.title} has been created for this incident",
     )
     if resp:

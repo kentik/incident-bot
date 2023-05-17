@@ -406,9 +406,6 @@ slack_user_token = os.getenv("SLACK_USER_TOKEN")
 Statuspage Module
 """
 statuspage_api_key = os.getenv("STATUSPAGE_API_KEY", default="")
-statuspage_integration_enabled = os.getenv(
-    "STATUSPAGE_INTEGRATION_ENABLED", default="false"
-)
 statuspage_page_id = os.getenv("STATUSPAGE_PAGE_ID", default="")
 sp_logo_url = "https://i.imgur.com/v4xmF6u.png"
 
@@ -515,7 +512,6 @@ def env_check(required_envs: List[str]):
         for var in [
             "STATUSPAGE_API_KEY",
             "STATUSPAGE_PAGE_ID",
-            "STATUSPAGE_URL",
         ]:
             if os.getenv(var) == "":
                 logger.fatal(

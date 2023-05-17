@@ -1,8 +1,8 @@
 import config
 
-from typing import List, Type, TypeVar
+from typing import Generator, Optional, Type, TypeVar
 from dataclasses import dataclass, field
-from github import Github, Repository
+from github import Github, Issue, Repository
 
 logger = config.log.get_logger("github.api")
 
@@ -60,3 +60,14 @@ class GithubApi:
 
     def test(self) -> bool:
         return self.repo is not None
+
+    def list_issues(self) -> Generator[Issue, None, None]:
+        for issue in self.repo.get_issues():
+            yield issue
+
+    def get_issue_by_link(self, link: str) -> Optional[Issue]:
+        for issue in self.list_issues():
+            if issue.html_url == link:
+                return issue
+        logger.debug("%s:get_issue_by_link: issue with link '%s' not found", self.__class__.__name__, link)
+        return None
