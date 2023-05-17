@@ -1,4 +1,6 @@
 import asyncio
+import re
+
 import config
 import requests
 import slack_sdk
@@ -234,7 +236,7 @@ def make_reacji_incident(reaction, channel_id, timestamp):
 @dataclass
 class FileInfo:
     """
-    Information about a file data attached to a Slack message
+    Information about a file attached to a Slack message
     """
     name: str
     mimetype: str
@@ -245,7 +247,7 @@ class FileInfo:
 
 class MessageContent:
     """
-    Representation of a Slack message content for the purpose of storing pinned content
+    Representation of a Slack message for the purpose of storing pinned content
     """
     def __init__(self, message):
         self.user = get_user_name(user_id=message["user"])
@@ -414,9 +416,26 @@ def reaction_added(event, say):
                         )
 
 
-"""
-Helper Functions
-"""
+@app.event("pin_added")
+def pin_added(event, say):
+    logger.debug("pin_added: event: %s", event)
+    channel_id = event["item"]["channel"]
+    try:
+        incident = db_read_incident(channel_id=channel_id)
+        logger.debug("pin_added: incident '%s", incident)
+    except Exception as exc:
+        logger.debug("pin_added: Failed to lookup incident with channel_id: '%s' - error: %s",
+                     channel_id, exc)
+        # Not a channel matching any incident tracked in the DB =>  nothing to do
+        return
+    if event["item"]["type"] != "message":
+        logger.debug("pin_added: not a message, ignoring")
+        # not a pinned message => nothing to do
+        return
+    message = MessageContent(event["item"]["message"])
+    message.store_to_db(incident.incident_id, lambda x: say(channel=channel_id, text=f":wave: {x}"))
+    if config.active.integrations.get("github"):
+        message.as_github_issue_comment(incident)
 
 
 @app.event("message")
@@ -505,89 +524,35 @@ def handle_message_events(body):
 
 
 """
-Statuspage
+Statuspage actions
 """
 
 
-@app.action("statuspage.components_select")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("statuspage.components_status_select")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("statuspage.impact_select")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("statuspage.open_statuspage")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("statuspage.update_status")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("statuspage.view_incident")
-def handle_static_action(ack, body):
-    logger.debug(body)
+@app.action(re.compile(r"^statuspage.*"))
+def statuspage_action(ack, body):
+    logger.debug("statuspage_action: body: %s", body)
     ack()
 
 
 """
-Jira
+Jira actions
 """
 
 
-@app.action("jira.description_input")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("jira.priority_select")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("jira.summary_input")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("jira.type_select")
-def handle_static_action(ack, body):
-    logger.debug(body)
-    ack()
-
-
-@app.action("jira.view_issue")
-def handle_static_action(ack, body):
-    logger.debug(body)
+@app.action(re.compile(r"^jira.*"))
+def jira_action(ack, body):
+    logger.debug("jira_action: body: %s", body)
     ack()
 
 
 """
-Logs for request handling various other requests
+Other actions
 """
 
 
 @app.action("dismiss_message")
-def handle_dismiss_message(ack, body):
-    logger.debug(body)
+def dismiss_message_action(ack, body):
+    logger.debug("dismiss_message_action: body: %s", body)
     try:
         ack()
         slack_web_client.chat_delete(
@@ -597,73 +562,31 @@ def handle_dismiss_message(ack, body):
         logger.error(f"Error deleting message: {error}")
 
 
-@app.action("incident.incident_postmortem_link")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
+@app.action(re.compile(r"^incident.*"))
+def incident_action(ack, body):
+    logger.debug("incident_action: body: %s", body)
     ack()
 
 
-@app.action("incident.click_conference_bridge_link")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
+@app.action(re.compile(r"^external.*"))
+def external_action(ack, body):
+    logger.debug("external_action: body: %s", body)
     ack()
 
 
-@app.action("incident.incident_guide_link")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
-    ack()
-
-
-@app.action("incident.join_incident_channel")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
-    ack()
-
-
-@app.action("external.reload")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
-    ack()
-
-
-@app.action("external.view_status_page")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
-    ack()
-
-
-@app.action("incident_update_modal_select_incident")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
+@app.action(re.compile(r"^incident_update_modal_.*"))
+def incident_update_modal_action(ack, body):
+    logger.debug("incident_update_modal_action: body: %s", body)
     ack()
 
 
 @app.action("open_rca")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
+def open_rca_action(ack, body):
+    logger.debug("open_rca_action: body: %s", body)
     ack()
 
 
-@app.action("open_incident_modal_set_severity")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
-    ack()
-
-
-@app.action("open_incident_modal_set_security_type")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
-    ack()
-
-
-@app.action("open_incident_modal_set_private")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
-    ack()
-
-
-@app.action("view_statuspage_incident")
-def handle_static_action(ack, body, logger):
-    logger.debug(body)
+@app.action(re.compile(r"^open_incident_modal_.*"))
+def open_incident_modal_action(ack, body):
+    logger.debug("open_incident_modal_action: body: %s", body)
     ack()

@@ -183,6 +183,13 @@ def return_user_list():
 @jwt_required()
 def patch_delete_user(user_id):
     user = db_user_lookup(id=user_id)
+    if not user:
+        logger.error("User not found id: %s (%s %s)", user_id, request.method, request.json)
+        return (
+            jsonify({"error": "User not found"}),
+            500,
+            {"ContentType": "application/json"},
+        )
     match request.method:
         case "DELETE":
             success, error = db_user_delete(email=user.email)

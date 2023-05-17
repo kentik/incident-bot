@@ -1,11 +1,13 @@
 import config
 import yaml
 
-from typing import List, Optional,Type, TypeVar
+from typing import Any, Dict, List, Optional,Type, TypeVar
 from datetime import datetime
 from dataclasses import dataclass, field
+from github import Issue
 from bot.github.api import GithubApi, Repository
 from bot.models.incident import db_read_incident, db_update_incident_rca_col
+from bot.models.pg import Incident
 
 
 logger = config.log.get_logger("github.issue")
@@ -35,25 +37,37 @@ class TemplateData:
 class GithubIssue:
     def __init__(
         self,
-        channel_id: str,
-        description: str,
-        start_time: datetime,
-        detection_time: datetime,
-        regions: List[str],
-        owner: str,
-        detection_source: str = "manual",
-        ingest_impacted: bool = False,
-        notifications_impacted: bool = False,
-
+        incident: Incident,
     ):
         self.api = GithubApi()
-        self.incident = db_read_incident(channel_id=channel_id)
+        self.incident = incident
+        if self.incident.rca:
+            self.issue = self.api.get_issue_by_link(self.incident.rca)
+        else:
+            self.issue = None
+
+    def new(
+            self,
+            description: str,
+            start_time: datetime,
+            detection_time: datetime,
+            regions: List[str],
+            owner: str,
+            detection_source: str = "manual",
+            ingest_impacted: bool = False,
+            notifications_impacted: bool = False,
+    ) -> Optional[Issue]:
+        if self.issue:
+            logger.error("Incident '%s' already has a GitHub issue ('%s')",
+                         self.incident.channel_description,
+                         self.link
+                         )
+            return None
         template = TemplateData.from_repo_path(self.api.repo, self.api.config.template_path)
-        title = self.incident.channel_description
         try:
             title = template.title_template.format(
                 date=start_time.date().isoformat(),
-                incident_title=title)
+                incident_title=self.incident.channel_description)
         except KeyError as exc:
             raise RuntimeError(
                 f"Failed to format GitHub issue title. Unknown macro: {exc}"
@@ -86,6 +100,7 @@ class GithubIssue:
         except Exception as exc:
             logger.error("%s: db_update_incident_rca_col raised: '%s", self.__class__.__name__, exc)
         logger.debug("%s", self)
+        return self.issue
 
     @property
     def incident_id(self) -> Optional[str]:
@@ -109,6 +124,12 @@ class GithubIssue:
     @property
     def repository(self):
         return self.issue.repository.full_name
+
+    def create_comment(self, body: str):
+        if not self.issue:
+            raise RuntimeError(f"Cannot create comment, since the issue has not been created yet in GitHub")
+        self.issue.create_comment(body=body)
+        logger.debug("%s:create_comment: comment created, body: '%s'", self.__class__.__name__, body)
 
     def __repr__(self):
         attrs = ",".join([f"{k}={v}" for k, v in self.__dict__.items() if not hasattr(v, "__dict__")])

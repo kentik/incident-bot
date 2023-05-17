@@ -2,7 +2,6 @@ import config
 import json
 import requests
 
-from bot.audit import log
 from bot.models.incident import (
     db_read_incident,
     db_update_incident_sp_data_col,
@@ -271,26 +270,26 @@ class StatuspageIncidentUpdate:
 class StatuspageComponents:
     """Return and use Statuspage components"""
 
-    def __init__(self) -> List[Dict[str, str]]:
+    def __init__(self):
         """Retrieves a list of components from the Statuspage API
         for the supplied page ID
 
         Returns Dict[str, str] containing the formatted message
         to be sent to Slack
         """
-        components_raw = requests.get(
+        resp = requests.get(
             f"{api}/pages/{page_id}/components",
             headers=headers,
         )
-        self.resp = json.loads(components_raw.text)
+        self.components = resp.json()
 
     @property
     def list_of_names(self) -> List[str]:
-        return [c["name"] for c in self.resp]
+        return [c["name"] for c in self.components]
 
     @property
     def list_of_dict_name_ids(self) -> List[Dict[str, str]]:
-        return [{c["name"]: c["id"]} for c in self.resp]
+        return [{c["name"]: c["id"]} for c in self.components]
 
     def formatted_components_update(
         self, selected_components: List[str], status: str
@@ -307,18 +306,18 @@ class StatuspageComponents:
 class StatuspageObjects:
     """Return and use Statuspage objects"""
 
-    def __init__(self) -> List[Dict[str, str]]:
+    def __init__(self):
         """Retrieves a list of components from the Statuspage API
         for the supplied page ID
 
         Returns Dict[str, str] containing the formatted message
         to be sent to Slack
         """
-        incidents_raw = requests.get(
+        resp = requests.get(
             f"{api}/pages/{page_id}/incidents",
             headers=headers,
         )
-        self.open_incidents = json.loads(incidents_raw.text)
+        self.open_incidents = resp.json()
 
     @property
     def open_incidents(self) -> Dict[str, str]:
