@@ -1836,11 +1836,11 @@ def open_modal(ack, body, client):
                 "type": "plain_text_input",
                 "action_id": "github.owner_input",
                 "min_length": 1,
+                "initial_value": "@user",
             },
             "label": {
                 "type": "plain_text",
                 "text": "Incident owner",
-                "initial_value": "@user",
                 "emoji": False,
             },
         },
