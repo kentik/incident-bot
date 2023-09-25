@@ -1308,12 +1308,6 @@ def open_modal(ack, body, client):
                 "blocks": blocks,
             },
         )
-    else:
-        client.chat_postEphemeral(
-            channel=incident_id,
-            user=user,
-            text="You don't have permissions to manage Statuspage incidents.",
-        )
 
 
 @app.view("open_statuspage_incident_modal")
