@@ -1829,7 +1829,6 @@ def open_modal(ack, body, client):
                 "emoji": False,
             },
         },
-        {"type": "divider"},
         {
             "type": "input",
             "block_id": "github_issue_owner_input",
@@ -1841,10 +1840,10 @@ def open_modal(ack, body, client):
             "label": {
                 "type": "plain_text",
                 "text": "Incident owner",
+                "initial_value": "@user",
                 "emoji": False,
             },
         },
-        {"type": "divider"},
         {
             "type": "input",
             "block_id": "github_issue_start_time_input",
@@ -1857,7 +1856,7 @@ def open_modal(ack, body, client):
             },
             "label": {
                 "type": "plain_text",
-                "text": "Incident start time in UTC (YYYY-MM-DD HH:MM)",
+                "text": "Incident start time  (UTC)",
                 "emoji": False,
             },
         },
@@ -1873,17 +1872,24 @@ def open_modal(ack, body, client):
             },
             "label": {
                 "type": "plain_text",
-                "text": "Incident detection time in UTC (YYYY-MM-DD HH:MM)",
+                "text": "Detection time (UTC)",
                 "emoji": False,
             },
         },
         {"type": "divider"},
         {
             "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Customer impact",
+            },
+        },
+        {
+            "type": "section",
             "block_id": "notifications_impacted_input",
             "text": {
                 "type": "mrkdwn",
-                "text": "*Were alarm notifications impacted?*",
+                "text": "*Notifications impacted?*",
             },
             "accessory": {
                 "action_id": "github.notifications_impacted_input",
@@ -1922,7 +1928,7 @@ def open_modal(ack, body, client):
             "block_id": "ingest_impacted_input",
             "text": {
                 "type": "mrkdwn",
-                "text": "*Was ingest impacted?*",
+                "text": "*Ingest impacted?*",
             },
             "accessory": {
                 "action_id": "github.ingest_impacted_input",
@@ -1967,7 +1973,7 @@ def open_modal(ack, body, client):
             },
             "label": {
                 "type": "plain_text",
-                "text": "Space separated list of affected regions or 'all'",
+                "text": "Space separated list of affected environments (eg. `iad1`, or `all`)",
                 "emoji": False,
             },
         },
@@ -1982,7 +1988,7 @@ def open_modal(ack, body, client):
             },
             "label": {
                 "type": "plain_text",
-                "text": "Source of incident detection ('manual', 'alarm', ...)",
+                "text": "How was the incident detected? (monitoring alert, manual, customer report, ...)",
                 "emoji": False,
             },
         },
