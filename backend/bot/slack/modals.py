@@ -188,6 +188,52 @@ def open_modal(ack, body, client):
             },
         },
         {
+            "type": "input",
+            "block_id": "open_incident_modal_desc",
+            "element": {
+                "type": "plain_text_input",
+                "max_length": incident.incident_description_max_length,
+                "action_id": "open_incident_modal_set_description",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "A brief description of the problem.",
+                },
+            },
+            "label": {"type": "plain_text", "text": "Description"},
+        },
+        {
+            "block_id": "severity",
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": "*Severity*"},
+            "accessory": {
+                "type": "static_select",
+                "action_id": "open_incident_modal_set_severity",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select a severity...",
+                    "emoji": True,
+                },
+                "initial_option": {
+                    "text": {
+                        "type": "plain_text",
+                        "text": placeholder_severity.upper(),
+                    },
+                    "value": placeholder_severity,
+                },
+                "options": [
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": sev.upper(),
+                            "emoji": True,
+                        },
+                        "value": sev,
+                    }
+                    for sev, _ in config.active.severities.items()
+                ],
+            },
+        },
+        {
             "type": "section",
             "block_id": "is_security_incident",
             "text": {
@@ -262,52 +308,6 @@ def open_modal(ack, body, client):
                         },
                         "value": "false",
                     },
-                ],
-            },
-        },
-        {
-            "type": "input",
-            "block_id": "open_incident_modal_desc",
-            "element": {
-                "type": "plain_text_input",
-                "max_length": incident.incident_description_max_length,
-                "action_id": "open_incident_modal_set_description",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "A brief description of the problem.",
-                },
-            },
-            "label": {"type": "plain_text", "text": "Description"},
-        },
-        {
-            "block_id": "severity",
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": "*Severity*"},
-            "accessory": {
-                "type": "static_select",
-                "action_id": "open_incident_modal_set_severity",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select a severity...",
-                    "emoji": True,
-                },
-                "initial_option": {
-                    "text": {
-                        "type": "plain_text",
-                        "text": placeholder_severity.upper(),
-                    },
-                    "value": placeholder_severity,
-                },
-                "options": [
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": sev.upper(),
-                            "emoji": True,
-                        },
-                        "value": sev,
-                    }
-                    for sev, _ in config.active.severities.items()
                 ],
             },
         },
