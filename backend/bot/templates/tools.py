@@ -24,4 +24,11 @@ def parse_modal_values(body: Dict[str, Any]) -> Dict[str, Any]:
                     result[title] = content.get("selected_option").get("value")
                 case "timepicker":
                     result[title] = content.get("selected_time")
+                case "datetimepicker":
+                    result[title] = int(content.get("selected_date_time"))
+                case "checkboxes":
+                    result[title] = {
+                        obj.get("value")
+                        for obj in content.get("selected_options")
+                    }
     return result

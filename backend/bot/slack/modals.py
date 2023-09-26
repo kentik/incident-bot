@@ -1831,12 +1831,13 @@ def open_modal(ack, body, client):
         },
         {
             "type": "input",
+            "optional": True,
             "block_id": "github_issue_owner_input",
             "element": {
                 "type": "plain_text_input",
                 "action_id": "github.owner_input",
                 "min_length": 1,
-                "initial_value": "@user",
+                "initial_value": "",
             },
             "label": {
                 "type": "plain_text",
@@ -1848,15 +1849,13 @@ def open_modal(ack, body, client):
             "type": "input",
             "block_id": "github_issue_start_time_input",
             "element": {
-                "type": "plain_text_input",
+                "type": "datetimepicker",
                 "action_id": "github.start_time_input",
-                "min_length": 16,
-                "max_length": 16,
-                "initial_value": now.isoformat(sep=" ", timespec="minutes").split("+")[0],
+                "initial_time": int(now.timestamp()),
             },
             "label": {
                 "type": "plain_text",
-                "text": "Incident start time  (UTC)",
+                "text": "Incident start time",
                 "emoji": False,
             },
         },
@@ -1864,102 +1863,46 @@ def open_modal(ack, body, client):
             "type": "input",
             "block_id": "github_issue_detection_time_input",
             "element": {
-                "type": "plain_text_input",
+                "type": "datetimepicker",
                 "action_id": "github.detection_time_input",
-                "min_length": 16,
-                "max_length": 16,
-                "initial_value": now.isoformat(sep=" ", timespec="minutes").split("+")[0],
+                "initial_time": int(now.timestamp()),
             },
             "label": {
                 "type": "plain_text",
-                "text": "Detection time (UTC)",
+                "text": "Detection time",
                 "emoji": False,
             },
         },
         {"type": "divider"},
         {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Customer impact",
+            "type": "input",
+            "block_id": "github_issue_impacts",
+            "label": {
+                "type": "plain_text",
+                "text": "Impacted areas",
+                "emoji": True,
             },
-        },
-        {
-            "type": "section",
-            "block_id": "notifications_impacted_input",
-            "text": {
-                "type": "mrkdwn",
-                "text": "*Notifications impacted?*",
-            },
-            "accessory": {
-                "action_id": "github.notifications_impacted_input",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select...",
-                },
-                "initial_option": {
-                    "text": {
-                        "type": "plain_text",
-                        "text": "No",
-                    },
-                    "value": "false",
-                },
+            "element": {
+                "type": "checkboxes",
+                "action_id": "github.impacts_input",
                 "options": [
                     {
                         "text": {
                             "type": "plain_text",
-                            "text": "Yes",
+                            "text": "Ingest",
+                            "emoji": True,
                         },
-                        "value": "true",
+                        "value": "ingest_impacted",
                     },
                     {
                         "text": {
                             "type": "plain_text",
-                            "text": "No",
+                            "text": "Notifications",
+                            "emoji": True,
                         },
-                        "value": "false",
+                        "value": "notifications_impacted",
                     },
-                ],
-            },
-        },
-        {
-            "type": "section",
-            "block_id": "ingest_impacted_input",
-            "text": {
-                "type": "mrkdwn",
-                "text": "*Ingest impacted?*",
-            },
-            "accessory": {
-                "action_id": "github.ingest_impacted_input",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select...",
-                },
-                "initial_option": {
-                    "text": {
-                        "type": "plain_text",
-                        "text": "No",
-                    },
-                    "value": "false",
-                },
-                "options": [
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Yes",
-                        },
-                        "value": "true",
-                    },
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "No",
-                        },
-                        "value": "false",
-                    },
-                ],
+                ]
             },
         },
         {"type": "divider"},
@@ -1973,7 +1916,7 @@ def open_modal(ack, body, client):
             },
             "label": {
                 "type": "plain_text",
-                "text": "Space separated list of affected environments (eg. `iad1`, or `all`)",
+                "text": "Space-separated list of affected environments (iad1, all, ...)",
                 "emoji": False,
             },
         },
@@ -1988,7 +1931,7 @@ def open_modal(ack, body, client):
             },
             "label": {
                 "type": "plain_text",
-                "text": "How was the incident detected? (monitoring alert, manual, customer report, ...)",
+                "text": "How was the incident detected? (alert, internal report, customer, ...)",
                 "emoji": False,
             },
         },
@@ -2060,8 +2003,8 @@ def handle_submission(ack, body, client, view):
         issue = GithubIssue(incident=db_read_incident(channel_id=channel_id))
         issue.new(
             description=parsed.get("github.description_input"),
-            start_time=datetime.fromisoformat(parsed.get("github.start_time_input")),
-            detection_time=datetime.fromisoformat(parsed.get("github.detection_time_input")),
+            start_time=datetime.utcfromtimestamp(parsed.get("github.start_time_input")),
+            detection_time=datetime.utcfromtimestamp(parsed.get("github.detection_time_input")),
             regions=parsed.get("github.regions_input").split(),
             owner=parsed.get("github.owner_input"),
             detection_source=parsed.get("github.detection_source_input"),
