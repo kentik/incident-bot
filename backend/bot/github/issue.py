@@ -1,7 +1,7 @@
 import config
 import yaml
 
-from typing import Any, Dict, List, Optional,Type, TypeVar
+from typing import Any, Dict, List, Optional,Type, TypeVar, Set
 from datetime import datetime
 from dataclasses import dataclass, field
 from github import Issue
@@ -53,9 +53,8 @@ class GithubIssue:
             detection_time: datetime,
             regions: List[str],
             owner: str,
+            impacts: Set[str],
             detection_source: str = "manual",
-            ingest_impacted: bool = False,
-            notifications_impacted: bool = False,
     ) -> Optional[Issue]:
         if self.issue:
             logger.error("Incident '%s' already has a GitHub issue ('%s')",
@@ -78,8 +77,8 @@ class GithubIssue:
                 incident_start=start_time.isoformat(sep=" ", timespec="minutes"),
                 incident_detection=detection_time.isoformat(sep=" ", timespec="minutes"),
                 regions=" ".join(regions),
-                ingest_impacted=ingest_impacted,
-                notifications_impacted=notifications_impacted,
+                ingest_impacted="ingest" in impacts,
+                notifications_impacted="notifications" in impacts,
                 owner=owner,
                 slack_channel_name=self.incident.channel_name,
                 slack_channel_id=self.incident.channel_id,

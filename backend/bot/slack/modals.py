@@ -1892,7 +1892,7 @@ def open_modal(ack, body, client):
                             "text": "Ingest",
                             "emoji": True,
                         },
-                        "value": "ingest_impacted",
+                        "value": "ingest",
                     },
                     {
                         "text": {
@@ -1900,7 +1900,7 @@ def open_modal(ack, body, client):
                             "text": "Notifications",
                             "emoji": True,
                         },
-                        "value": "notifications_impacted",
+                        "value": "notifications",
                     },
                 ]
             },
@@ -1954,24 +1954,6 @@ def open_modal(ack, body, client):
     )
 
 
-@app.action("github.ingest_impacted_input")
-def handle_some_action(ack, body):
-    ack()
-    logger.debug("github.ingest_impacted_input: body: '%s'", body)
-
-
-@app.action("github.notifications_impacted_input")
-def handle_some_action(ack, body):
-    ack()
-    logger.debug("github.notifications_impacted_input: body: '%s'", body)
-
-
-@app.action("github.view_issue")
-def handle_some_action(ack, body):
-    ack()
-    logger.debug("github.view_issue: body: '%s'", body)
-
-
 @app.view("open_incident_create_github_issue_modal")
 def handle_submission(ack, body, client, view):
     """
@@ -2008,8 +1990,7 @@ def handle_submission(ack, body, client, view):
             regions=parsed.get("github.regions_input").split(),
             owner=parsed.get("github.owner_input"),
             detection_source=parsed.get("github.detection_source_input"),
-            ingest_impacted=to_bool(parsed.get("github.ingest_impacted_input")),
-            notifications_impacted=to_bool(parsed.get("github.notifications_impacted_input"))
+            impacts=parsed.get("github.impacts_input"),
         )
         logger.debug("open_incident_create_github_issue_modal: channel_id: %s created issue: %s", channel_id,
                      issue)
