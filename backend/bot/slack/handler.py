@@ -83,6 +83,7 @@ def handle_mention(body, say, logger):
 
             pd_oncall_data = pd_api.find_who_is_on_call()
             resp = pd_on_call_message(data=pd_oncall_data)
+            logger.debug(resp)
             say(blocks=resp, text="")
         else:
             say(
