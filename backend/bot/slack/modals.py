@@ -1876,6 +1876,7 @@ def open_modal(ack, body, client):
         {"type": "divider"},
         {
             "type": "input",
+            "optional": True,
             "block_id": "github_issue_impacts",
             "label": {
                 "type": "plain_text",
