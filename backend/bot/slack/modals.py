@@ -1841,7 +1841,7 @@ def open_modal(ack, body, client):
             },
             "label": {
                 "type": "plain_text",
-                "text": "Incident owner",
+                "text": "Incident owner (name, email or @username)",
                 "emoji": False,
             },
         },
