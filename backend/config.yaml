@@ -35,20 +35,18 @@ roles:
 # Severities defined here will appear as options for each incident
 severities:
   sev1: |
-    Critical production issue impacting most or all users with a major impact on
-    SLAs. This is an all-hands-on-deck scenario that requires swift action to
-    restore operation. Customers must be notified.
+    Critical production issue impacting most or all users with a major impact on SLAs.
+    This is an all-hands-on-deck scenario that requires swift action to restore operation.
+    Customers must be notified via a status page update.
   sev2: |
-    Significant performance and/or functional degradation impacting a large
-    number of users.
+    Significant performance and/or functional degradation impacting a large number of users.
   sev3: |
     Minor production issue that may or may not user affecting impact.
-    The issue is worth coordination facilitating quick resolution but does not
-    indicate significant on SLAs.
+    The issue is worth coordination facilitating quick resolution but does not indicate significant on SLAs.
   sev4: |
-    Ongoing investigation. The incident has not been promoted to SEV3 yet,
-    indicating no significant on SLAs, but the situation warrants closer
-    investigation and monitoring. This is the default setting for a new incident.
+    Ongoing investigation.
+    The incident has not been promoted to SEV3 yet, indicating no significant on SLAs, but the situation warrants closer investigation and monitoring.
+    This is the default setting for a new incident.
 # Generate periodic reminders to incident channel
 incident_reminders:
   # Any severity in this list will have a scheduled reminder job created

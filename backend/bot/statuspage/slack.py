@@ -36,7 +36,7 @@ def return_new_statuspage_incident_message(channel_id: str) -> Dict[str, str]:
                         "type": "button",
                         "text": {
                             "type": "plain_text",
-                            "text": "Start New Incident",
+                            "text": "Declare Statuspage Incident",
                             "emoji": True,
                         },
                         "value": channel_id,

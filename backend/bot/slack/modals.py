@@ -1851,7 +1851,7 @@ def open_modal(ack, body, client):
             "element": {
                 "type": "datetimepicker",
                 "action_id": "github.start_time_input",
-                "initial_time": int(now.timestamp()),
+                "initial_date_time": int(now.timestamp()),
             },
             "label": {
                 "type": "plain_text",
@@ -1865,7 +1865,7 @@ def open_modal(ack, body, client):
             "element": {
                 "type": "datetimepicker",
                 "action_id": "github.detection_time_input",
-                "initial_time": int(now.timestamp()),
+                "initial_date_time": int(now.timestamp()),
             },
             "label": {
                 "type": "plain_text",
