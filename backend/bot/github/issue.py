@@ -77,8 +77,8 @@ class GithubIssue:
                 incident_start=start_time.isoformat(sep=" ", timespec="minutes"),
                 incident_detection=detection_time.isoformat(sep=" ", timespec="minutes"),
                 regions=" ".join(regions),
-                ingest_impacted="ingest" in impacts,
-                notifications_impacted="notifications" in impacts,
+                ingest_impacted=yes_or_no("ingest" in impacts),
+                notifications_impacted=yes_or_no("notifications" in impacts),
                 owner=owner,
                 slack_channel_name=self.incident.channel_name,
                 slack_channel_id=self.incident.channel_id,
@@ -133,3 +133,7 @@ class GithubIssue:
     def __repr__(self):
         attrs = ",".join([f"{k}={v}" for k, v in self.__dict__.items() if not hasattr(v, "__dict__")])
         return f"{self.__class__.__name__}(incident_id={self.incident_id},{attrs})"
+
+
+def yes_or_no(val: bool) -> str:
+    return "yes" if val else "no"
