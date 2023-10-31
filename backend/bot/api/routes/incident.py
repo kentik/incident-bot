@@ -216,6 +216,7 @@ def get_incident_audit_log(incident_id):
 @incidentrt.route("/incident/<incident_id>/status", methods=["PUT"])
 @jwt_required()
 def set_incident_status(incident_id):
+    logger.info(f"set_incident_status: {request.json}")
     try:
         request_data = request.json
         db_update_incident_status_col(incident_id=incident_id, status=request_data["status"])
@@ -225,6 +226,7 @@ def set_incident_status(incident_id):
             {"ContentType": "application/json"},
         )
     except Exception as error:
+        logger.error(f"set_incident_status error: {error}")
         return (
             jsonify({"error": str(error)}),
             500,
