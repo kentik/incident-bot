@@ -149,6 +149,28 @@ const ViewSingleIncident = () => {
       });
   }
 
+  async function setIncidentStatus(incidentID, status) {
+    var url = apiUrl + '/incident/' + incidentID + '/status';
+    await axios({
+      method: 'PUT',
+      responseType: 'json',
+      url: url,
+      data: JSON.stringify({ status }),
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+    })
+      .then(function () {
+        setFetchStatus('success');
+        setFetchMessage(`Incident status changed`);
+        setOpenFetchStatus(true);
+        setRefreshData(true);
+      })
+      .catch(function (error) {
+        setFetchStatus('error');
+        setFetchMessage(`Error setting incident status: ${error}`);
+        setOpenFetchStatus(true);
+      });
+  }
+
   async function deletePinnedItem(id) {
     var url = apiUrl + '/incident/' + incidentName + '/pinned/' + id;
     await axios({
@@ -419,14 +441,23 @@ const ViewSingleIncident = () => {
                         </Stack>
                       </ListItem>
                       <Divider component="li" />
+
                       <ListItem dense key="severity">
                         <ListItemIcon>
                           <WarningIcon fontSize="large" />
                         </ListItemIcon>
                         <Stack direction="row" spacing={1}>
                           <Chip label={incident.severity} color="primary" />
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            key={`${incident.incident_id}-resolve`}
+                            onClick={() => setIncidentStatus(incident.incident_id, 'resolved')}>
+                            Resolve Incident
+                          </Button>
                         </Stack>
                       </ListItem>
+
                       <Divider component="li" />
                       <ListItem dense key="slack-channel">
                         <ListItemIcon>

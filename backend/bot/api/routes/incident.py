@@ -9,8 +9,9 @@ from bot.audit import log
 from bot.exc import ConfigurationError
 from bot.incident import actions, incident
 from bot.incident.action_parameters import ActionParametersWeb
-from bot.models.incident import db_read_all_incidents, db_read_incident
+from bot.models.incident import db_read_all_incidents, db_read_incident, db_update_incident_status_col
 from bot.models.pg import Incident, IncidentLogging, Session
+
 from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import jwt_required
 
@@ -211,6 +212,26 @@ def get_incident_audit_log(incident_id):
                 {"ContentType": "application/json"},
             )
 
+
+@incidentrt.route("/incident/<incident_id>/status", methods=["PUT"])
+@jwt_required()
+def set_incident_status(incident_id):
+    logger.info(f"set_incident_status: {request.json}")
+    try:
+        request_data = request.json
+        db_update_incident_status_col(incident_id=incident_id, status=request_data["status"])
+        return (
+            jsonify({"success": True}),
+            200,
+            {"ContentType": "application/json"},
+        )
+    except Exception as error:
+        logger.error(f"set_incident_status error: {error}")
+        return (
+            jsonify({"error": str(error)}),
+            500,
+            {"ContentType": "application/json"},
+        )
 
 @incidentrt.route("/incident/<incident_id>/pinned", methods=["GET"])
 @jwt_required()
