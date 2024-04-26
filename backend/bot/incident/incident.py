@@ -185,7 +185,7 @@ class Incident:
             " ", "-"
         ).lower()
         now = datetime.datetime.now()
-        return f"inc-{now.year}{now.month}{now.day}{now.hour}{now.minute}-{formatted_channel_name_suffix}"
+        return f"inc-{now.year}-{now.month:02d}-{now.day:02d}-{now.hour:02d}h{now.minute:02d}-{formatted_channel_name_suffix}"
 
     def __generate_conference_link(self):
         if "zoom" in config.active.integrations and config.active.integrations.get(
